@@ -133,9 +133,10 @@ def test_deterministic_schema_detection() -> None:
     assert not schema.enriched
     by_id = {f.id: f for f in schema.fields}
 
-    # 1. Section inference from "Part I. Claimant Information." prefix
-    assert by_id["F1"].section == "Part I. Claimant Information"
-    assert by_id["F2"].section == "Part I. Claimant Information"
+    # 1. No regex section inference: the full tooltip stays the label and
+    #    sections are left to visual enrichment.
+    assert by_id["F1"].label == "Part I. Claimant Information. 1. Full legal name"
+    assert by_id["F1"].section is None
 
     # 2. Mutex checkbox groups: c1_1[0..2] -> G1, Yes/No pair -> G2
     assert schema.mutex_groups == {
@@ -322,7 +323,10 @@ def test_guardrails_enforce_office_use_only_and_mutex_checkbox_groups() -> None:
 def test_prompt_catalog_includes_section_group_and_office_use() -> None:
     pdf_bytes = _make_gov_like_pdf()
     info = inspect_form(pdf_bytes, settings=Settings())
-    prompt_parts = build_prompt(MappingRequest_for(info.fields), nonce="testnonce")
+    # Sections come from visual enrichment; set one to check the catalog renders it.
+    fields = [f.model_copy(update={"section": "Part I. Claimant Information"}) if f.id == "F1" else f
+              for f in info.fields]
+    prompt_parts = build_prompt(MappingRequest_for(fields), nonce="testnonce")
     catalog_text = "\n".join(p.text for p in prompt_parts if p.text)
     assert '"section":"Part I. Claimant Information"' in catalog_text
     assert '"group":"G1"' in catalog_text

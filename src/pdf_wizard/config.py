@@ -113,9 +113,3 @@ def _float(env: Mapping[str, str], name: str, default: float, lo: float, hi: flo
         raise ConfigError(f"{name} must be between {lo} and {hi}.")
     return value
 
-
-def legacy_heuristics_enabled(env: Mapping[str, str] | None = None) -> bool:
-    """Phase 0 measurement flag (temporary): PDF_WIZARD_LEGACY_HEURISTICS=0 turns off the
-    form-specific label/section regex heuristics so their value can be measured."""
-    env = os.environ if env is None else env
-    return env.get("PDF_WIZARD_LEGACY_HEURISTICS", "1").strip() != "0"

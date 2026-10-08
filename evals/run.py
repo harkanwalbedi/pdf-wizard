@@ -58,6 +58,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--show-values", action="store_true",
         help="print expected and actual values of failed fields (may print personal data)",
     )
+    p.add_argument(
+        "--enrich-schema", choices=("auto", "on", "off"), default="auto",
+        help="visual schema enrichment, as in `pdf-wizard fill` (default: auto)",
+    )
     p.add_argument("--verbose", action="store_true", help="per-case details for every config")
     p.add_argument("--debug", action="store_true", help="log tracebacks of crashed cases")
     return p
@@ -109,6 +113,7 @@ def run(
             repeats=args.repeat,
             jobs=args.jobs,
             on_done=progress,
+            enrich_schema={"auto": "auto", "on": True, "off": False}[args.enrich_schema],
         )
     except CaseError as exc:
         print(f"Error: {exc}", file=stderr)

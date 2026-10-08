@@ -23,7 +23,7 @@ from pypdf import PasswordType, PdfReader, PdfWriter
 from pypdf.errors import LimitReachedError
 from pypdf.generic import ArrayObject, DictionaryObject, IndirectObject, NameObject, NumberObject, StreamObject
 
-from ..config import MB, Limits, legacy_heuristics_enabled
+from ..config import MB, Limits
 from ..errors import InvalidInputError, UnsupportedFormError
 from ..models import FieldType, FormField, FormInfo, Option
 from .limits import page_text, pypdf_limits
@@ -361,12 +361,7 @@ def _build_field(field_id: str, raw: _RawField, ftype: FieldType, page_of: dict[
             visible = True
 
     raw_tu = _text(_get(raw.node, "/TU"))
-    if legacy_heuristics_enabled():
-        if xfa_label and (not raw_tu or len(raw_tu.strip()) > MAX_LABEL_CHARS or "I R S" in raw_tu):
-            label = xfa_label
-        else:
-            label = _condense_long_tooltip(raw_tu) if raw_tu else xfa_label
-    elif xfa_label and (not raw_tu or len(raw_tu.strip()) > MAX_LABEL_CHARS):
+    if xfa_label and (not raw_tu or len(raw_tu.strip()) > MAX_LABEL_CHARS):
         label = xfa_label
     else:
         label = raw_tu or xfa_label
@@ -891,17 +886,6 @@ def _clean_speak(text: str) -> str:
     text = _SPACED_CAPS.sub(lambda m: m.group(0).replace(" ", ""), text)
     text = text.replace("P. O.", "P.O.").replace("U. S.", "U.S.")
     return re.sub(r"\s*\$?\.?\s*$", "", text).strip()
-
-
-def _condense_long_tooltip(text: str) -> str:
-    """Condenses oversized /TU tooltips that contain multi-sentence instructions."""
-    cleaned = _clean_speak(" ".join(text.split()))
-    if len(cleaned) <= MAX_LABEL_CHARS:
-        return cleaned
-    matches = list(_ITEM_MARKER.finditer(cleaned))
-    if matches:
-        return cleaned[matches[-1].start(1) :][:MAX_LABEL_CHARS]
-    return cleaned[:MAX_LABEL_CHARS]
 
 
 _LEADERS_START = re.compile(r"^(?:[\u2018\u2019\u2022\u25a0-\u25ff\u2610-\u2612]\s+)+")

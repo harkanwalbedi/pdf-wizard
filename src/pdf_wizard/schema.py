@@ -24,7 +24,7 @@ from typing import Any, Literal
 
 from pydantic import ValidationError
 
-from .config import MB, Settings, legacy_heuristics_enabled
+from .config import MB, Settings
 from .errors import InvalidInputError, MappingError
 from .models import (
     FieldType,
@@ -43,10 +43,6 @@ SCHEMA_PROMPT_VERSION = "2026-10-08.1"
 _MAX_CACHE_ENTRIES = 128
 
 _ARRAY_INDEX_RE = re.compile(r"^(?P<base>.+)\[\d+\]$")
-_SECTION_PREFIX_RE = re.compile(
-    r"^(?:Page\s+\d+\.\s*)?((?:Part\s+[I1-9VX]+(?:\.\s*[^.]{1,50})?|Step\s+\d+[a-z]?(?::\s*[^.]{1,50})?|Employers\s+Only|Sign\s+Here|Third\s+Party\s+Designee))\.\s+",
-    re.I,
-)
 _GENERIC_PATH_PART = re.compile(
     r"^(?:topmostsubform|page\d+|form\d*|subform\d*|button\d*|btn\d*|.*readorder.*|.*table.*|f\d+_\d+|c\d+_\d+)$",
     re.I,
@@ -322,8 +318,6 @@ def build_schema(info: FormInfo) -> FormSchema:
     """Deterministically builds a `FormSchema` from `FormInfo` (sections, mutex groups, split combs, office-use)."""
     fields = [f.model_copy(deep=True) for f in info.fields]
 
-    legacy = legacy_heuristics_enabled()
-
     # 1. Infer section headings, disambiguate format-only tooltips, and detect office-use-only flags.
     current_section: str | None = None
     last_page: int | None = None
@@ -331,25 +325,19 @@ def build_schema(info: FormInfo) -> FormSchema:
         if f.page != last_page:
             current_section = None
             last_page = f.page
-        label_sec = _infer_label_section(f) if legacy else None
-        if label_sec:
-            current_section = label_sec
-        sec = label_sec or _infer_name_section(f) or current_section
+        sec = _infer_name_section(f) or current_section
         if sec and not f.section:
             f = f.model_copy(update={"section": sec})
         if f.label and _FORMAT_ONLY_LABEL_RE.match(f.label):
             human_name = _humanize_field_name(f.name)
             if human_name:
                 f = f.model_copy(update={"label": _clean_label(f"{human_name} ({f.label})")})
-        if _is_office_use(f, legacy=legacy):
+        if _is_office_use(f):
             f = f.model_copy(update={"office_use_only": True})
         fields[idx] = f
 
-    # 2. Disambiguate split comb fields (SSN 3-2-4, EIN 2-7, phone 3-3-4, ZIP+4 5-4) and split (2,2,4) dates.
-    _disambiguate_split_combs(fields, legacy=legacy)
-    if legacy:
-        _disambiguate_split_dates(fields)
-        _propagate_checkbox_prefixes(fields)
+    # 2. Disambiguate split comb fields (SSN 3-2-4, EIN 2-7, phone 3-3-4, ZIP+4 5-4) by their physical lengths.
+    _disambiguate_split_combs(fields)
 
     # 3. Disambiguate non-comb writable fields on the same page that share an identical tooltip/label
     #    when their field names are human-readable and distinct (e.g. "Server Name" vs "Server Address")
@@ -371,12 +359,6 @@ def build_schema(info: FormInfo) -> FormSchema:
         mutex_groups=mutex_groups,
         warnings=list(info.warnings),
     )
-
-
-def _infer_label_section(f: FormField) -> str | None:
-    if f.label and (m := _SECTION_PREFIX_RE.match(f.label)):
-        return _clean_label(m.group(1))
-    return None
 
 
 def _infer_name_section(f: FormField) -> str | None:
@@ -402,64 +384,6 @@ def _humanize_field_name(name: str) -> str | None:
     spaced = re.sub(r"([a-z])([A-Z0-9])", r"\1 \2", spaced)
     spaced = " ".join(spaced.split())
     return spaced if sum(ch.isalpha() for ch in spaced) >= 2 else None
-
-
-_CHECKBOX_COLON_PREFIX_RE = re.compile(r"^(Check\s+if\s+[^:]{2,25}):\s+(.+)$", re.I)
-
-
-def _propagate_checkbox_prefixes(fields: list[FormField]) -> None:
-    """Propagates a 'Check if ...:' prefix across immediately following sibling checkboxes on the same page."""
-    prefix: str | None = None
-    last_page: int | None = None
-    for idx, f in enumerate(fields):
-        if not f.writable:
-            continue
-        if f.type is not FieldType.CHECKBOX or f.page != last_page:
-            prefix = None
-            last_page = f.page
-        if f.type is not FieldType.CHECKBOX or not f.label:
-            continue
-        if m := _CHECKBOX_COLON_PREFIX_RE.match(f.label):
-            prefix = m.group(1).strip()
-        elif prefix and ":" not in f.label and not f.label.lower().startswith("check") and len(f.label) <= 32:
-            fields[idx] = f.model_copy(update={"label": _clean_label(f"{prefix}: {f.label}")})
-        else:
-            prefix = None
-
-
-def _disambiguate_split_dates(fields: list[FormField]) -> None:
-    """Disambiguates non-comb (2, 2, 4) split month/day/year text triples on the same page."""
-    triples_by_page: dict[int | None, list[tuple[int, str]]] = defaultdict(list)
-    i = 0
-    while i + 3 <= len(fields):
-        w = fields[i : i + 3]
-        if (
-            all(f.writable and f.type is FieldType.TEXT and not f.comb for f in w)
-            and (w[0].max_len, w[1].max_len, w[2].max_len) == (2, 2, 4)
-            and len({f.page for f in w}) == 1
-        ):
-            combined = " ".join((f.label or "").lower() for f in w)
-            if "month" in combined and "day" in combined and "year" in combined:
-                raw_base = w[0].label or "Date"
-                base = re.sub(r"\b2\s*digit\s*month\b.*$", "", raw_base, flags=re.I).strip(" .:;,-")
-                if not base or len(base) < 2:
-                    m = re.match(r"^(\d+[a-z]?)\b", (w[1].label or "").strip())
-                    base = f"{m.group(1)}. Date" if m else "Date"
-                triples_by_page[w[0].page].append((i, base))
-                i += 3
-                continue
-        i += 1
-
-    parts = ("2-digit month", "2-digit day", "4-digit year")
-    for page_triples in triples_by_page.values():
-        multi = len(page_triples) > 1
-        base_label = page_triples[0][1]
-        for t_idx, (start, base) in enumerate(page_triples, start=1):
-            b = base if len(base) >= len(base_label) else base_label
-            prefix = f"{b} #{t_idx}" if multi else b
-            for offset, part in enumerate(parts):
-                cur = fields[start + offset]
-                fields[start + offset] = cur.model_copy(update={"label": _clean_label(f"{prefix} ({part})")})
 
 
 def _disambiguate_duplicate_labels(fields: list[FormField]) -> None:
@@ -497,37 +421,12 @@ def _number_duplicate_labels(fields: list[FormField]) -> None:
             fields[idx] = f.model_copy(update={"label": _clean_label(f"{f.label} (#{order})")})
 
 
-def _is_office_use(f: FormField, *, legacy: bool = True) -> bool:
+def _is_office_use(f: FormField) -> bool:
     text = f"{f.label or ''} {f.section or ''}"
-    if _OFFICE_USE_RE.search(text):
-        return True
-    if not legacy:
-        return False
-    # IRS form top-right PgHeader tracking EIN box on Form SS-4 ("PgHeader[0].f1_1[0]", label "Page 1. EIN").
-    if "pgheader" in f.name.lower() and (f.label or "").strip().lower() in ("page 1. ein", "ein"):
-        return True
-    return False
+    return bool(_OFFICE_USE_RE.search(text))
 
 
-_GENERIC_PART_LABEL = re.compile(
-    r"^(?:(?:first|middle|last)(?:[-\s]+\d+)?[-\s]+digits?|\d+[-\s]+digits?|line|area code|prefix|part\s*\d+)$",
-    re.I,
-)
-
-
-def _extract_comb_base(label: str | None, suffixes: tuple[str, ...]) -> str:
-    cleaned = label or "Number"
-    for s in suffixes:
-        cleaned = re.sub(re.escape(s) + r"\s*$", "", cleaned, flags=re.I).strip(" .:;,")
-    sentences = [p.strip() for p in cleaned.split(". ") if p.strip()]
-    if sentences:
-        cand = sentences[-1].strip(" .:")
-        if len(cand) >= 3:
-            return cand
-    return cleaned or "Number"
-
-
-def _disambiguate_split_combs(fields: list[FormField], *, legacy: bool = True) -> None:
+def _disambiguate_split_combs(fields: list[FormField]) -> None:
     patterns: tuple[tuple[tuple[int, ...], tuple[str, ...]], ...] = (
         ((3, 2, 4), ("first 3 digits", "middle 2 digits", "last 4 digits")),
         ((2, 7), ("first 2 digits", "last 7 digits")),
@@ -547,13 +446,9 @@ def _disambiguate_split_combs(fields: list[FormField], *, legacy: bool = True) -
             if len({w.page for w in window}) > 1:
                 continue
             labels = [w.label or "" for w in window]
-            # Disambiguate when labels are identical or missing/generic on later parts.
-            generic_part = (lambda lbl: bool(_GENERIC_PART_LABEL.match(lbl))) if legacy else (lambda lbl: False)
-            if (
-                len(set(labels)) == 1
-                or any(not lbl or len(lbl) <= 3 or generic_part(lbl) for lbl in labels[1:])
-            ):
-                base = _extract_comb_base(labels[0], suffixes) if legacy else (labels[0] or "Number")
+            # Disambiguate when labels are identical, or missing/very short on later parts.
+            if len(set(labels)) == 1 or any(not lbl or len(lbl) <= 3 for lbl in labels[1:]):
+                base = labels[0] or "Number"
                 for offset, suffix in enumerate(suffixes):
                     cur = window[offset]
                     fields[i + offset] = cur.model_copy(update={"label": _clean_label(f"{base} ({suffix})")})

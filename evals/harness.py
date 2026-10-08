@@ -27,7 +27,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import unicodedata
 from collections import Counter
 from collections.abc import Callable, Iterable, Sequence
@@ -445,11 +444,6 @@ class ReplayMapper:
         return self._inner.enrich_schema(schema, form_pdf)  # type: ignore[attr-defined]
 
 
-def _eval_enrich_schema() -> bool:
-    """Phase 0 measurement switch: PDF_WIZARD_EVAL_ENRICH_SCHEMA=1 runs visual schema enrichment."""
-    return os.environ.get("PDF_WIZARD_EVAL_ENRICH_SCHEMA", "0").strip() == "1"
-
-
 def run_case(
     case: EvalCase,
     mapper: Mapper,
@@ -458,6 +452,7 @@ def run_case(
     thresholds: Sequence[float],
     settings: Settings,
     repeat: int = 1,
+    enrich_schema: bool | str = "auto",
 ) -> list[CaseRun]:
     """Runs one case with one mapper, once per threshold, calling the model only once."""
     form_bytes = case.form_path.read_bytes()
@@ -476,7 +471,7 @@ def run_case(
                 inputs,
                 mapper=replay,
                 settings=settings,
-                options=FillOptions(min_confidence=threshold, enrich_schema=_eval_enrich_schema()),
+                options=FillOptions(min_confidence=threshold, enrich_schema=enrich_schema),
                 form_name=f"{case.name}.pdf",
                 today=case.today,
             )
@@ -604,6 +599,7 @@ def run_suite(
     repeats: int = 1,
     jobs: int = 4,
     on_done: Callable[[EvalCase, str, int], None] | None = None,
+    enrich_schema: bool | str = "auto",
 ) -> SuiteResult:
     """Runs every case with every model (`repeats` times each) and every threshold."""
     if not cases or not models or not thresholds:
@@ -620,6 +616,7 @@ def run_suite(
             thresholds=thresholds,
             settings=replace(settings, model=model),
             repeat=repeat,
+            enrich_schema=enrich_schema,
         )
 
     tasks = [(case, model, repeat) for model in models for case in cases for repeat in range(1, repeats + 1)]
