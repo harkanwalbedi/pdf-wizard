@@ -50,6 +50,8 @@ class Settings:
     request_timeout_s: float = 180.0
     include_form_visual: bool = True
     limits: Limits = field(default_factory=Limits)
+    # Directory for AI-enriched schemas of blank forms (no user data). None = no disk cache.
+    schema_cache_dir: str | None = None
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> Settings:
@@ -71,6 +73,7 @@ class Settings:
             min_confidence=min_conf,
             min_confidence_unverifiable=max(min_conf_unverifiable, min_conf),
             request_timeout_s=_float(env, "PDF_WIZARD_TIMEOUT_S", 180.0, 10.0, 900.0),
+            schema_cache_dir=_schema_cache_dir(env),
         )
 
     def validate_for_model_calls(self, env: Mapping[str, str] | None = None) -> None:
@@ -85,6 +88,17 @@ class Settings:
             )
         if self.backend == "gemini-api" and not env.get("GEMINI_API_KEY"):
             raise ConfigError("Set GEMINI_API_KEY (paid tier only), or use the default Vertex AI backend.")
+
+
+def _schema_cache_dir(env: Mapping[str, str]) -> str | None:
+    """PDF_WIZARD_SCHEMA_CACHE=0 disables; PDF_WIZARD_SCHEMA_CACHE_DIR overrides the location."""
+    if env.get("PDF_WIZARD_SCHEMA_CACHE", "1").strip() == "0":
+        return None
+    explicit = (env.get("PDF_WIZARD_SCHEMA_CACHE_DIR") or "").strip()
+    if explicit:
+        return os.path.expanduser(explicit)
+    base = (env.get("XDG_CACHE_HOME") or "").strip() or os.path.join(os.path.expanduser("~"), ".cache")
+    return os.path.join(base, "pdf-wizard", "schemas")
 
 
 def _float(env: Mapping[str, str], name: str, default: float, lo: float, hi: float) -> float:

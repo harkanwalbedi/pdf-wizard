@@ -91,8 +91,12 @@ def build_parser() -> argparse.ArgumentParser:
     fill.add_argument("-o", "--output", type=Path, help="where to write the filled PDF")
     fill.add_argument("--schema", type=Path, metavar="FILE",
                       help="use a pre-detected schema JSON file from 'pdf-wizard schema'")
-    fill.add_argument("--enrich-schema", action="store_true",
-                      help="run a visual AI schema-enrichment pass on the blank form before filling")
+    enrich_mode = fill.add_mutually_exclusive_group()
+    enrich_mode.add_argument("--enrich-schema", action="store_true",
+                             help="always run the AI schema pass on the blank form before filling "
+                                  "(default: only when field labels are unclear; results are cached per form)")
+    enrich_mode.add_argument("--no-enrich-schema", action="store_true",
+                             help="never run the AI schema pass; use the basic field labels")
     fill.add_argument("--data", type=Path, action="append", default=[], metavar="FILE",
                       help="structured data: JSON or CSV (repeatable)")
     fill.add_argument("--row", type=_positive_int, metavar="N",
@@ -334,7 +338,7 @@ def _fill(args: argparse.Namespace, settings: Settings, mapper_factory: MapperFa
         dry_run=args.dry_run,
         min_confidence=args.min_confidence,
         schema=loaded_schema,
-        enrich_schema=args.enrich_schema,
+        enrich_schema=True if args.enrich_schema else (False if args.no_enrich_schema else "auto"),
     )
     outcome = fill_form(form_bytes, inputs, mapper=mapper, settings=settings, options=options,
                         form_name=args.form.name)

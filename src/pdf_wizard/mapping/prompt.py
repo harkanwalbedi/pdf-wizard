@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from ..models import FieldType, FormField, Option, Source
+from ..pdf.overlay import page_sizes
 from .base import MappingRequest
 
 log = logging.getLogger(__name__)
@@ -150,18 +151,39 @@ def build_prompt(request: MappingRequest, *, nonce: str) -> list[PromptPart]:
 
 
 def build_schema_prompt(fields: list[FormField], form_pdf: bytes) -> list[PromptPart]:
-    """Builds the prompt parts for Stage 1 visual schema enrichment on a blank PDF."""
-    catalog = "\n".join(_catalog_line(f) for f in fields if f.writable)
+    """Builds the prompt parts for Stage 1 visual schema enrichment on a blank PDF.
+
+    The attached PDF is the blank form with each field drawn as a red box
+    labelled with its id; each catalog line also carries the field's rect.
+    """
+    try:
+        sizes = page_sizes(form_pdf)
+    except Exception:  # sizes are a hint; the boxes on the page still work without them
+        sizes = {}
+    size_line = ", ".join(f"page {p}: {w:g} x {h:g}" for p, (w, h) in sorted(sizes.items())[:50])
+    catalog = "\n".join(_schema_catalog_line(f) for f in fields if f.writable)
     return [
         PromptPart(
             text=(
-                "Analyze the blank target form PDF attached below and enrich each field in the catalog.\n\n"
+                "Analyze the blank target form PDF attached below and enrich each field in the catalog.\n"
+                "In the attached PDF every field is drawn as a red box with its id (F1, F2, ...) in the "
+                "top-left corner. Each catalog line also gives rect = [x0, y0, x1, y1] in PDF points, "
+                "with the origin at the bottom-left of the page"
+                + (f" (page sizes in points: {size_line})" if size_line else "")
+                + ".\n\n"
                 f"FIELD CATALOG (one JSON object per line):\n{catalog}"
             )
         ),
-        PromptPart(text="TARGET FORM (blank form PDF to analyze)"),
+        PromptPart(text="TARGET FORM (blank form PDF to analyze, with field boxes drawn in red)"),
         PromptPart(data=form_pdf, mime_type="application/pdf"),
     ]
+
+
+def _schema_catalog_line(f: FormField) -> str:
+    entry = json.loads(_catalog_line(f))
+    if f.rect is not None:
+        entry["rect"] = [round(v, 1) for v in f.rect]
+    return json.dumps(entry, ensure_ascii=False, separators=(",", ":"))
 
 
 def _catalog_line(f: FormField) -> str:

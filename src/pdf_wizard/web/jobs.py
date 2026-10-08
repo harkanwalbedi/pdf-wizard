@@ -257,7 +257,7 @@ class JobRunner:
             inputs,
             mapper=self._mapper_factory(),
             settings=self._settings,
-            options=FillOptions(flatten=payload.flatten),
+            options=FillOptions(flatten=payload.flatten, enrich_schema="auto"),
             form_name=payload.form_name,
         )
 
