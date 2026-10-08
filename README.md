@@ -35,26 +35,44 @@ Every value must cite a source and a verbatim quote (or JSON key path) that cont
 ## How it works
 
 ```mermaid
-flowchart LR
-    A["Blank Form PDF"] --> B["Stage 1: Schema Detection<br/>labels, sections, comb splits,<br/>checkbox mutex groups"]
-    S["Sources: JSON/CSV, text,<br/>scanned PDFs, JPEG/PNG,<br/>emails, reference forms"] --> C["Normalize sources"]
-    B --> D["Stage 2: One Gemini call<br/>(structured output + evidence)"]
-    C --> D
-    D --> E["Guardrails<br/>types, options, length, format,<br/>mutex groups, evidence, confidence"]
-    E --> F["Fill PDF<br/>(editable or flattened)"]
-    E --> G["Masked Audit Report"]
+flowchart TD
+    subgraph S1["1. Inspection & Visual Overlay"]
+        Blank["Blank Form PDF"] --> Inspect["Inspect Widgets & Geometry<br/>(Extract rect coordinates, field types, /TU tooltips)"]
+        Inspect --> Check{"Cryptic labels or<br/>duplicates?"}
+        Check -- "Yes (e.g. IRS 4506-T)" --> Overlay["overlay.py:<br/>Render Red Bounding Boxes + [F#] Badges"]
+        Check -- "No (e.g. clean W-9)" --> Ready["Ready Schema"]
+    end
+
+    subgraph S2["2. Visual Reasoning & Cache"]
+        Overlay --> CacheCheck{"Disk Cache Hit?<br/>sha256 + prompt_v + model"}
+        CacheCheck -- Yes --> Ready
+        CacheCheck -- No --> GeminiVision["Gemini Vision on Blank Form<br/>(Reads printed text next to [F#] box)"]
+        GeminiVision --> Merge["Validate & Merge<br/>(Drop hallucinations, keep comb splits)"]
+        Merge --> SaveCache["Cache in ~/.cache/pdf-wizard/schemas/"]
+        SaveCache --> Ready
+    end
+
+    subgraph S3["3. Form Filling with Guardrails"]
+        Ready --> Filler["Gemini Filler Model<br/>(Maps Enriched Catalog + User Docs/Notes)"]
+        UserDocs["User Sources:<br/>JSON, text, scans, PDFs, emails"] --> Filler
+        Filler --> Guardrails{"Strict Guardrail Verification<br/>- max_len, combs, allowed options<br/>- <= 1 checkbox per mutex group<br/>- verbatim evidence quote in source text"}
+        Guardrails -- "Pass" --> Write["pypdf Fill Engine<br/>- Final Filled PDF (editable/flat)<br/>- Masked Audit Report"]
+        Guardrails -- "Fail" --> LeaveBlank["Leave Field Blank<br/>(Explain in Audit Report)"]
+    end
 ```
 
-1. **Inspect & Detect Schema (Stage 1):** reads the PDF's widgets (type, options, max length, comb flags, format scripts), extracts tooltips and nearby printed labels, disambiguates split comb fields (SSN `3-2-4`, EIN `2-7`, phone `3-3-4`, ZIP+4 `5-4`), and groups mutually-exclusive checkboxes (`G1`, `G2`, ...). When labels look cryptic, duplicated, or overlong, `fill` automatically runs a visual pass with Gemini on the blank PDF alone (zero user data), drawing each field's box and ID on the page so the model can read labels, sections, and groups; the result is validated before it is trusted and falls back to the deterministic schema on failure. Enriched schemas are cached in memory and on disk (`~/.cache/pdf-wizard/schemas`, keyed by form `SHA-256`, prompt version, and model), so each form is enriched at most once. Schemas can be saved as JSON (`pdf-wizard schema`).
-2. **Load Sources:** normalizes JSON/CSV records, plain text, emails (`.eml`), text and scanned PDFs, JPEG/PNG images, previously filled reference PDFs, and user notes. Today's date is always available as `S0`.
-3. **Map (Stage 2):** one structured-output Gemini call proposes values for fields answered by the sources, citing `source_id` and a verbatim quote (or JSON key path) as `evidence`.
-4. **Guardrails:** deterministically verifies every proposal:
-   - fits the field's type, allowed option list, `max_len`, comb length, and date/number/mask format;
-   - respects mutually-exclusive checkbox groups (if multiple boxes in a group are proposed, all are rejected);
-   - blocks fields marked `office_use_only`;
-   - verifies that `evidence` appears verbatim in the cited source and states the proposed value itself;
-   - rejects prompt-injection language (`"ignore previous instructions..."`) and proposals below the confidence threshold.
-5. **Fill and Report:** writes verified values with proper PDF appearances and outputs a JSON report with sensitive values (`SSN`, `EIN`, bank numbers, `DOB`) masked as `***-**-6789`.
+1. **Inspect & Detect Schema (Stage 1):** Reads the PDF's AcroForm widgets (type, options, max length, comb flags, format scripts), extracts tooltips and nearby printed labels, disambiguates split comb fields (SSN `3-2-4`, EIN `2-7`, phone `3-3-4`, ZIP+4 `5-4`), and groups mutually-exclusive checkboxes (`G1`, `G2`, ...).
+2. **Visual Overlay & Schema Enrichment:** Government forms often lack descriptive tooltips or use cryptic internal keys like `topmostSubform[0].Page1[0].f1_07[0]`. In automatic mode, PDF Wizard renders a temporary overlay PDF with **red bounding boxes and bold `[F#]` badges** over the blank form. Gemini Vision inspects this overlay to visually associate each field with printed form headings, instructions, and checkbox matrix groups—**with zero user data or PII exposed**.
+3. **Two-Tier Schema Cache:** Enriched schemas are cached in memory and on disk (`~/.cache/pdf-wizard/schemas/`, keyed by blank form `SHA-256`, prompt version, and model). Subsequent fills of the same form run instantly at $0 extra schema cost.
+4. **Load Sources:** Normalizes structured JSON/CSV records, plain text, emails (`.eml`), scanned PDFs, JPEG/PNG images, previously filled reference PDFs, and user notes. Today's date is always provided as `S0`.
+5. **Map (Stage 2):** One structured-output Gemini call proposes values for fields answered by the sources, citing `source_id` and a verbatim quote (or JSON key path) as `evidence`.
+6. **Guardrails Engine:** Deterministically verifies every proposed value:
+   - Fits the field's physical constraints (`max_len`, comb digits, allowed option values, format masks);
+   - Respects mutually-exclusive checkbox groups (if multiple boxes in a group are proposed, all are rejected);
+   - Blocks fields marked `office_use_only` or signature lines;
+   - Verifies that `evidence` appears verbatim in the cited source and proves the proposed value;
+   - Rejects prompt-injection text and proposals below the confidence threshold.
+7. **Fill and Report:** Writes verified values with proper PDF appearances and outputs a JSON audit report with sensitive values (`SSN`, `EIN`, bank numbers, `DOB`) masked as `***-**-6789`.
 
 ---
 
