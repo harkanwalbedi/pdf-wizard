@@ -1,0 +1,83 @@
+{
+  "generator": "gemini",
+  "model": "gemini-3.8-flash",
+  "prompt_version": "2026-10-08.1",
+  "scenario": "Marcus Vance is an individual taxpayer requesting Form 1040 return transcripts for tax years 2021 and 2022 for a mortgage loan application.",
+  "values": [
+    {
+      "field_id": "F1",
+      "value": "Marcus Vance",
+      "source_line": "The primary taxpayer name shown on the tax return is Marcus Vance."
+    },
+    {
+      "field_id": "F2",
+      "value": "900-01-4829",
+      "source_line": "My social security number is 900-01-4829."
+    },
+    {
+      "field_id": "F5",
+      "value": "742 Evergreen Ter, Springfield, OR 97477",
+      "source_line": "My current address is 742 Evergreen Ter, Springfield, OR 97477."
+    },
+    {
+      "field_id": "F6",
+      "value": "104 Elm St, Eugene, OR 97401",
+      "source_line": "The previous address shown on the last return filed was 104 Elm St, Eugene, OR 97401."
+    },
+    {
+      "field_id": "F7",
+      "value": "MV948201",
+      "source_line": "The mortgage lender assigned customer file number MV948201 to the application."
+    },
+    {
+      "field_id": "F8",
+      "value": "1040",
+      "source_line": "The tax form number for which I am requesting records is 1040."
+    },
+    {
+      "field_id": "F9",
+      "value": "checked",
+      "source_line": "Please select 6a. Return Transcript for the specified years."
+    },
+    {
+      "field_id": "F14",
+      "value": "checked",
+      "source_line": "Signatory attests that he/she has read the attestation clause and upon so reading declares that he/she has the authority to sign the Form 4506-T."
+    },
+    {
+      "field_id": "F15",
+      "value": "555-0182",
+      "source_line": "The best contact number for the taxpayer is 555-0182."
+    },
+    {
+      "field_id": "F17",
+      "value": "12",
+      "source_line": "The ending month for the first tax period requested is 12."
+    },
+    {
+      "field_id": "F18",
+      "value": "31",
+      "source_line": "The closing day for the first requested period is 31."
+    },
+    {
+      "field_id": "F19",
+      "value": "2021",
+      "source_line": "The first tax year requested is 2021."
+    },
+    {
+      "field_id": "F20",
+      "value": "12",
+      "source_line": "The ending month for the second tax period is 12."
+    },
+    {
+      "field_id": "F21",
+      "value": "31",
+      "source_line": "The second period closing day is 31."
+    },
+    {
+      "field_id": "F22",
+      "value": "2022",
+      "source_line": "The second tax year requested is 2022."
+    }
+  ]
+}

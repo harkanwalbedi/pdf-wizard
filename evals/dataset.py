@@ -1,8 +1,9 @@
-"""Synthetic dataset & fake filled PDF generator using Faker.
+"""Synthetic dataset & fake filled PDF generator.
 
 Generates 10s or 100s of realistic fake records for built-in forms (`irs_w9`,
-`irs_w4`, `irs_8822`, `irs_w8ben`, `job_application`, or `all`) or any custom
-AcroForm PDF (`--form path/to/form.pdf`).
+`irs_w4`, `irs_8822`, `irs_w8ben`, `job_application`, or `all`; Faker
+templates) or any custom AcroForm PDF (`--form path/to/form.pdf`; Gemini
+personas checked by the product guardrails, see `evals/personas.py`).
 
 For every generated record, writes:
 1. A filled ground-truth PDF in `<out>/filled/<id>.pdf` (via `fill_pdf`).
@@ -16,7 +17,8 @@ Usage::
 
     .venv/bin/python -m evals.dataset --template irs_w9 --count 100 --out /tmp/w9_dataset
     .venv/bin/python -m evals.dataset --template all --count 50 --formats txt,scanned_pdf,jpeg,png --out /tmp/dataset
-    .venv/bin/python -m evals.dataset --form my_form.pdf --count 100 --out /tmp/custom_dataset
+    .venv/bin/python -m evals.dataset --form my_form.pdf --count 100 --out /tmp/custom_dataset \
+        --generator-model <model>       # needs cloud credentials; --generator faker works offline
 """
 
 from __future__ import annotations
@@ -43,12 +45,22 @@ from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
 
 from pdf_wizard.config import Settings
-from pdf_wizard.models import FieldType, FormField
+from pdf_wizard.mapping.gemini import create_mapper
+from pdf_wizard.models import FormField
 from pdf_wizard.pdf.filler import fill_pdf
 from pdf_wizard.pdf.inspector import LoadedForm, open_form
 from pdf_wizard.schema import apply_schema, detect_schema
 
 from .harness import CASES_DIR
+from .personas import (
+    Persona,
+    generate_with_faker,
+    generate_with_gemini,
+    generator_model,
+    load_persona,
+    persona_record,
+    validate_persona,
+)
 
 rl_config.invariant = 1
 
@@ -61,6 +73,7 @@ TEMPLATES: dict[str, Path] = {
 }
 
 FORMATS = ("txt", "scanned_pdf", "jpeg", "png", "pdf", "eml")
+GENERATORS = ("gemini", "faker")
 
 _US_STATES = (
     "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA",
@@ -642,334 +655,32 @@ def _generate_job_application(
     )
 
 
-_OVERFLOW_OR_SECONDARY_RE = re.compile(
-    r"(?:\(continued\)|\bline\s+[2-9]\s+of\s+\d+\b|\(#(?:[2-9]|\d{2,})\)|\bbodyrow[2-9]\b|\brow:\s*[2-9]\b)",
-    re.I,
-)
-_OVERFLOW_NAME_RE = re.compile(r"^(?P<base>.+?)[_.\s]*[2-9]$")
-
-
-def _checkbox_stem(label: str | None) -> str:
-    if not label:
-        return ""
-    cleaned = re.sub(r"\s*\(#\d+\)\s*$", "", label).strip(" .:")
-    return cleaned.lower()
-
-
 def _generate_generic(
     sample_id: str,
     template_name: str,
     modality: str,
-    form: LoadedForm,
+    fields: Sequence[FormField],
+    persona: Persona,
     fake: Faker,
-    rng: random.Random,
-) -> GeneratedSample:
-    """Synthesizes realistic Faker values for any arbitrary AcroForm PDF based on its detected schema."""
-    schema = detect_schema(form, enrich=False, use_cache=True)
-    info = apply_schema(form.info, schema)
-    pdf_values: dict[str, str] = {}
-    expected: dict[str, Any] = {}
-    lines: list[str] = []
-
-    writable = [f for f in info.fields if f.writable]
-    leaf_names_on_page: set[tuple[int | None, str]] = {
-        (f.page, re.sub(r"\[\d+\]$", "", f.name.split(".")[-1]).lower()) for f in writable
-    }
-
-    # 1. Decide which checkbox is selected in each mutex group (prefer the first option, or "Yes" in Yes/No).
-    chosen_in_group: dict[str, str] = {}
-    unchecked_stems: set[str] = set()
-    unchecked_yes_prefixes: set[str] = set()
-    for gid, fids in schema.mutex_groups.items():
-        group_fields = [f for f in writable if f.id in fids]
-        if not group_fields:
-            continue
-        picked_cb = group_fields[0]
-        chosen_in_group[gid] = picked_cb.id
-        for gf in group_fields:
-            if gf.id != picked_cb.id:
-                stem = _checkbox_stem(gf.label)
-                if len(stem) >= 4:
-                    unchecked_stems.add(stem)
-                if stem.endswith(" yes") and (m := re.match(r"^(\d+[a-z]?)\b", stem)):
-                    unchecked_yes_prefixes.add(m.group(1))
-
-    # Track whether a "Method of service" radio button is present (and select personal service "served").
-    has_service_method_radio = any(
-        f.type is FieldType.RADIO and "method" in f"{f.name} {f.label or ''}".lower() for f in writable
-    )
-    checked_independent_cb = False
-
-    for f in writable:
-        raw_hint = f"{f.label or ''} {f.name}".lower()
-        leaf = re.sub(r"\[\d+\]$", "", f.name.split(".")[-1])
-
-        # Skip office-use and signature fields.
-        if f.office_use_only or "signature" in raw_hint or leaf.lower().startswith("sig_"):
-            expected[f.name] = None
-            continue
-
-        # Skip secondary/overflow lines (e.g. "(continued)", "Line 2 of 2", "(#2)", "Row: 2", "*_2").
-        if _OVERFLOW_OR_SECONDARY_RE.search(f"{f.label or ''} {f.section or ''}"):
-            expected[f.name] = None
-            continue
-        if (m_ov := _OVERFLOW_NAME_RE.match(leaf.lower())) and (
-            (f.page, m_ov.group("base")) in leaf_names_on_page
-            or (f.page, f"{m_ov.group('base')}_1") in leaf_names_on_page
-            or (f.page, f"{m_ov.group('base')}1") in leaf_names_on_page
-            or (f.page, f"{m_ov.group('base')}.1") in leaf_names_on_page
-        ):
-            expected[f.name] = None
-            continue
-
-        # Skip optional "previous address", "trade name (if different)", "foreign country", "fax" distractions.
-        if any(
-            kw in raw_hint
-            for kw in (
-                "if different",
-                "previous address",
-                "foreign country",
-                "group exemption number",
-                "fax",
-                "executor, administrator",
-            )
-        ):
-            expected[f.name] = None
-            continue
-
-        # When the form has a "Method of service" radio button (personal service "served" selected),
-        # leave non-personal-service branches ("left with", "left at residence", "returned unexecuted",
-        # "designated by law", "organization", "other") blank.
-        if has_service_method_radio and f.type is FieldType.TEXT:
-            if any(
-                kw in raw_hint
-                for kw in (
-                    "left with",
-                    "left at residence",
-                    "returned unexecuted",
-                    "unexecuted",
-                    "returned date",
-                    "designated",
-                    "designee",
-                    "organization",
-                    "served on",
-                    "date served 1",
-                    "date served 2",
-                    "other",
-                )
-            ) and "place served" not in raw_hint:
-                expected[f.name] = None
-                continue
-
-        # Mutex checkbox group handling.
-        if f.group:
-            if chosen_in_group.get(f.group) != f.id:
-                expected[f.name] = None
-                continue
-        elif f.type is FieldType.CHECKBOX:
-            # Check at most one independent checkbox per form (and skip "revoke"/"do not"/"additional" boxes).
-            if checked_independent_cb or any(
-                kw in raw_hint for kw in ("revoke", "retention", "specific use", "additional", "check if new")
-            ):
-                expected[f.name] = None
-                continue
-            checked_independent_cb = True
-
-        # Skip text fields that are companion specifications for an unchecked checkbox in a mutex group.
-        if f.type is FieldType.TEXT and unchecked_stems:
-            f_stem = _checkbox_stem(f.label)
-            if any(f_stem == s or f_stem.startswith(s + ".") or f_stem.startswith(s + " ") for s in unchecked_stems):
-                expected[f.name] = None
-                continue
-            if any(f"if {p} is" in f_stem for p in unchecked_yes_prefixes):
-                expected[f.name] = None
-                continue
-
-        val, human = _fake_value_for_field(f, fake, rng)
-        if val is None:
-            expected[f.name] = None
-            continue
-        pdf_values[f.id] = val
-        if f.type is FieldType.CHECKBOX:
-            expected[f.name] = True
-        elif val != val.strip() and val.strip():
-            expected[f.name] = [val, val.strip()]
-        else:
-            expected[f.name] = val
-        label = f.label or f.name
-        lines.append(f"{label}: {human}")
-
-    prose = [" ".join(lines[i : i + 4]) for i in range(0, len(lines), 4)] or ["No fillable fields."]
-    person = fake.name()
-    return GeneratedSample(
+) -> tuple[GeneratedSample, int]:
+    """Turns a persona into a sample, keeping only values that pass the product guardrails."""
+    checked = validate_persona(fields, persona)
+    lines = checked.lines or ["No details were provided."]
+    prose = [" ".join(lines[i : i + 4]) for i in range(0, len(lines), 4)]
+    sample = GeneratedSample(
         sample_id=sample_id,
         template=template_name,
         modality=modality,
-        pdf_values=pdf_values,
-        expected=expected,
+        pdf_values=checked.pdf_values,
+        expected=checked.expected,
         title=f"INTAKE SUMMARY — {template_name.upper()}",
         subtitle=f"Synthetic Record — {sample_id}",
         prose_paragraphs=prose,
         structured_lines=lines,
-        sender_name=person,
+        sender_name=fake.name(),
         sender_email=fake.safe_email(),
     )
-
-
-def _fake_value_for_field(f: FormField, fake: Faker, rng: random.Random) -> tuple[str | None, str]:
-    hint = f"{f.label or ''} {f.name} {f.format_hint or ''}".lower()
-    name_only = f.name.lower()
-    if f.type is FieldType.CHECKBOX:
-        on = f.on_states[0] if f.on_states else "Yes"
-        return on, "Yes (checked)"
-    if f.type in (FieldType.RADIO, FieldType.CHOICE):
-        opts = [
-            o
-            for o in f.options
-            if o.value and o.value.strip() and o.value.strip().lower() not in ("off", "none", "select", "choose")
-        ]
-        if not opts:
-            return None, ""
-        # For "Method of service" radio groups, prefer the first option ("served" / personal service).
-        if f.type is FieldType.RADIO and "method" in hint:
-            picked = opts[0]
-        else:
-            picked = rng.choice(opts)
-        val_clean = picked.value.strip()
-        lbl_clean = (picked.label or "").strip()
-        if lbl_clean and val_clean.lower() not in lbl_clean.lower():
-            human = f"{lbl_clean} ({val_clean})"
-        else:
-            human = lbl_clean or val_clean
-        return picked.value, human
-    # Text field
-    if f.comb and f.max_len:
-        digits = "".join(str(rng.randint(1, 9)) for _ in range(f.max_len))
-        return digits, digits
-    if f.format_hint and (m := re.match(r"^(?:number|percent):(\d+):", f.format_hint)):
-        decimals = int(m.group(1))
-        whole = fake.random_int(15, 250)
-        num = f"{whole}.{0:0{decimals}d}" if decimals > 0 else str(whole)
-        return num, num
-    if f.format_hint and f.format_hint.startswith("date:") and ("h:mm" in f.format_hint.lower()):
-        dt_time = f"{fake.random_int(1, 12):02d}/{fake.random_int(1, 28):02d}/2026 9:30 am"
-        return dt_time, dt_time
-    if f.max_len == 2 and "month" in hint:
-        mo = f"{fake.random_int(1, 12):02d}"
-        return mo, mo
-    if f.max_len == 2 and "day" in hint:
-        dy = f"{fake.random_int(1, 28):02d}"
-        return dy, dy
-    if f.max_len == 4 and "year" in hint:
-        yr = str(fake.random_int(2021, 2025))
-        return yr, yr
-    if "closing month" in hint:
-        return "December", "December"
-    if re.search(r"\bptin\b", hint):
-        ptin = f"P{fake.random_int(10000000, 99999999)}"
-        return ptin, ptin
-    if "caf no" in hint:
-        caf = f"{fake.random_int(1000, 9999)}-{fake.random_int(10000, 99999)}R"
-        return caf, caf
-    if "plan number" in hint:
-        return "001", "001"
-    if "customer file number" in hint or (f.max_len and "numeric" in hint):
-        num_str = "".join(str(rng.randint(1, 9)) for _ in range(min(f.max_len or 8, 8)))
-        return num_str, num_str
-    if re.search(r"\b(?:ssn|tin|itin)\b", hint) or "social security" in hint or "taxpayer identification" in hint:
-        ssn = "-".join(_clean_ssn(fake))
-        val = ssn.replace("-", "") if (f.max_len and f.max_len < 11) else ssn
-        return val, ssn
-    if re.search(r"\bein\b", hint) or "employer identification" in hint:
-        ein = "-".join(_clean_ein(fake))
-        val = ein.replace("-", "") if (f.max_len and f.max_len < 10) else ein
-        return val, ein
-    if "date" in hint or "dob" in hint or "birth" in hint:
-        dt = f"{fake.random_int(1, 12):02d}/{fake.random_int(1, 28):02d}/{fake.random_int(2020, 2025)}"
-        return dt, dt
-    if "year(s) or period(s)" in hint:
-        return "2024", "2024"
-    if "tax form number" in hint or "transcript requested" in hint or "form number to be filed" in hint:
-        return "1040", "1040"
-    if "type of tax" in hint:
-        return "Income", "Income"
-    if "specific tax matters" in hint:
-        return "Form 1040 Return", "Form 1040 Return"
-    if any(k in hint for k in ("number of employees", "number of llc members", "agricultural", "household")) or (
-        f.label and f.label.strip().startswith("13.")
-    ):
-        cnt = str(fake.random_int(1, 12))
-        return cnt, cnt
-    if "email" in hint:
-        em = fake.safe_email()
-        return em, em
-    if "phone" in hint or "tel" in hint:
-        ph = _clean_phone(fake)
-        return ph, ph
-    if "county and state" in hint:
-        cs = f"Travis County, {rng.choice(_US_STATES)}"
-        return cs, cs
-    if "city, state, and zip" in hint:
-        csz = f"{fake.city()}, {rng.choice(_US_STATES)} {fake.random_int(10000, 99950):05d}"
-        return csz, csz
-    if "zip" in hint or "postal" in hint:
-        zp = f"{fake.random_int(10000, 99950):05d}"
-        return zp, zp
-    if "state" in hint and ("incorporated" in hint or not f.max_len or f.max_len <= 2):
-        st = rng.choice(_US_STATES)
-        return st, st
-    if "city" in hint:
-        ct = fake.city()
-        return ct, ct
-    if "courtroom" in hint:
-        return "Courtroom 4B", "Courtroom 4B"
-    if "name" in name_only and "address" not in name_only and "organization" not in name_only:
-        nm = fake.name()
-        if f.max_len:
-            nm = nm[: f.max_len]
-        return nm, nm
-    if "name and address" in hint or "name/address" in hint or "address" in hint or "street" in hint or "place" in hint or "location" in hint:
-        addr = f"{_clean_street(fake)}, {fake.city()}, {rng.choice(_US_STATES)} {fake.random_int(10000, 99950):05d}"
-        if "name" in hint:
-            addr = f"{fake.name()}, {addr}"
-        if f.max_len:
-            addr = addr[: f.max_len]
-        return addr, addr
-    if "action number" in hint or "case number" in hint or "case_num" in hint or "docket" in hint:
-        cn = f"1:26-cv-{fake.random_int(1000, 9999)}"
-        return cn, cn
-    if any(k in hint for k in ("fee", "amount", "cost", "price")):
-        amt = f"{fake.random_int(15, 250)}.00"
-        return amt, amt
-    if any(k in hint for k in ("organization", "company", "employer", "corporation", "firm", "business", "legal name of entity")):
-        co = fake.company()
-        if f.max_len:
-            co = co[: f.max_len]
-        return co, co
-    if "title" in hint and "name" not in hint:
-        return "President", "President"
-    if "first" in hint and "name" in hint:
-        fn = fake.first_name()
-        return fn, fn
-    if "last" in hint and "name" in hint:
-        ln = fake.last_name()
-        return ln, ln
-    if any(k in hint for k in ("name", "plaintiff", "defendant", "individual", "person", "served on", "left with", "subpoena_to", "party")):
-        nm = fake.name()
-        if f.max_len:
-            nm = nm[: f.max_len]
-        return nm, nm
-    if any(k in hint for k in ("reason", "specify", "additional", "other", "description", "notes", "documents", "merchandise", "services provided")):
-        phrase = "Consulting and software development services"
-        if "document" in hint:
-            phrase = " Employment contracts and billing records for 2025".strip()
-        if f.max_len:
-            phrase = phrase[: f.max_len]
-        return phrase, phrase
-    word = fake.word().capitalize()
-    if f.max_len:
-        word = word[: f.max_len]
-    return word, word
+    return sample, checked.dropped
 
 
 # --------------------------------------------------------------------------- #
@@ -1118,8 +829,20 @@ def generate_dataset(
     seed: int = 42,
     flatten: bool = False,
     copy_form: bool = False,
+    generator: str = "gemini",
+    generator_model_id: str | None = None,
+    reuse_personas: bool = False,
+    mapper: Any | None = None,
 ) -> DatasetManifest:
-    """Generates `count` fake filled PDFs, unstructured sources, and eval cases."""
+    """Generates `count` fake filled PDFs, unstructured sources, and eval cases.
+
+    For a custom `form_path`, values come from personas (`generator`: "gemini"
+    or the offline "faker" fallback), checked by the product guardrails. With
+    `reuse_personas`, existing `cases/<id>/persona.json` files are used instead
+    of calling the generator. `mapper` is injectable for tests.
+    """
+    if generator not in GENERATORS:
+        raise ValueError(f"Unknown generator {generator!r}; choose from {', '.join(GENERATORS)}")
     if count < 1:
         raise ValueError("count must be at least 1")
     valid_formats = tuple(f.strip().lower() for f in formats if f.strip())
@@ -1162,15 +885,38 @@ def generate_dataset(
     filled_pdfs: list[Path] = []
     case_dirs: list[Path] = []
     width = max(4, len(str(count)))
+    sample_ids = [f"{template_names[(i - 1) % len(template_names)]}_{i:0{width}d}" for i in range(1, count + 1)]
+
+    custom_fields: list[FormField] = []
+    personas: dict[str, Persona] = {}
+    used_model: str | None = None
+    if form_path is not None:
+        custom_fields, personas, used_model = _prepare_personas(
+            form_bytes_by_name[template_names[0]],
+            sample_ids,
+            cases_dir,
+            generator=generator,
+            generator_model_id=generator_model_id,
+            reuse=reuse_personas,
+            mapper=mapper,
+            seed=seed,
+            fake=fake,
+            rng=rng,
+        )
+    dropped_values = 0
 
     for idx in range(1, count + 1):
         tname = template_names[(idx - 1) % len(template_names)]
         modality = valid_formats[(idx - 1) % len(valid_formats)]
-        sample_id = f"{tname}_{idx:0{width}d}"
+        sample_id = sample_ids[idx - 1]
 
         # Re-open a fresh LoadedForm for filling so pypdf writer state is clean.
         form = open_form(form_bytes_by_name[tname], limits=settings.limits)
-        sample = _build_sample(sample_id, tname, modality, loaded_forms[tname], fake, rng)
+        if form_path is not None:
+            sample, dropped = _generate_generic(sample_id, tname, modality, custom_fields, personas[sample_id], fake)
+            dropped_values += dropped
+        else:
+            sample = _build_sample(sample_id, tname, modality, loaded_forms[tname], fake, rng)
 
         # 1. Write the filled ground-truth PDF.
         filled = fill_pdf(form, sample.pdf_values, flatten=flatten)
@@ -1197,6 +943,12 @@ def generate_dataset(
                     target_form.write_bytes(form_bytes_by_name[tname])
 
         rel_source = write_source_file(sample, sources_dir, rng=rng)
+        if form_path is not None:
+            persona_path = case_dir / "persona.json"
+            if not (reuse_personas and persona_path.exists()):
+                persona_path.write_text(
+                    persona_record(personas[sample_id], generator=generator, model=used_model), encoding="utf-8"
+                )
         case_spec = {
             "description": f"Synthetic {tname} record #{idx} ({modality}).",
             "today": sample.today,
@@ -1215,6 +967,8 @@ def generate_dataset(
         "cases_dir": str(cases_dir),
         "samples": [p.stem for p in filled_pdfs],
     }
+    if form_path is not None:
+        manifest_data.update(generator=generator, generator_model=used_model, dropped_values=dropped_values)
     (output_dir / "manifest.json").write_text(json.dumps(manifest_data, indent=2) + "\n", encoding="utf-8")
     return DatasetManifest(
         output_dir=output_dir,
@@ -1245,13 +999,53 @@ def _build_sample(
         return _generate_irs_w8ben(sample_id, modality, form, fake, rng)
     if tname == "job_application":
         return _generate_job_application(sample_id, modality, form, fake, rng)
-    return _generate_generic(sample_id, tname, modality, form, fake, rng)
+    raise ValueError(f"Unknown template {tname!r}")
+
+
+def _prepare_personas(
+    form_bytes: bytes,
+    sample_ids: Sequence[str],
+    cases_dir: Path,
+    *,
+    generator: str,
+    generator_model_id: str | None,
+    reuse: bool,
+    mapper: Any | None,
+    seed: int,
+    fake: Faker,
+    rng: random.Random,
+) -> tuple[list[FormField], dict[str, Persona], str | None]:
+    """Detects the form's fields and returns one persona per sample (reused, Gemini, or Faker)."""
+    personas: dict[str, Persona] = {}
+    if reuse:
+        for sid in sample_ids:
+            path = cases_dir / sid / "persona.json"
+            if path.exists():
+                personas[sid] = load_persona(path.read_text(encoding="utf-8"))
+    missing = [sid for sid in sample_ids if sid not in personas]
+    use_gemini = generator == "gemini" and bool(missing)  # reused personas need no credentials
+
+    settings = Settings.from_env() if use_gemini else Settings()
+    if use_gemini and mapper is None:
+        mapper = create_mapper(settings)
+    form = open_form(form_bytes, limits=settings.limits)
+    # Validation only needs physical constraints; enriched labels help the generator write good personas.
+    schema = detect_schema(form, settings=settings, mapper=mapper, enrich="auto" if use_gemini else False)
+    fields = [f for f in apply_schema(form.info, schema).fields if f.writable]
+    model: str | None = None
+    if use_gemini:
+        model = generator_model(settings, generator_model_id)
+        new = generate_with_gemini(fields, len(missing), mapper=mapper, model=model, seed=seed)
+        personas.update(zip(missing, new, strict=True))
+    elif missing:
+        personas.update((sid, generate_with_faker(fields, fake, rng)) for sid in missing)
+    return fields, personas, model
 
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="python -m evals.dataset",
-        description="Generate synthetic filled PDFs and multimodal eval cases using Faker.",
+        description="Generate synthetic filled PDFs and multimodal eval cases.",
     )
     p.add_argument(
         "--template",
@@ -1287,6 +1081,18 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--seed", type=int, default=42, help="random seed for reproducible generation (default: 42)")
     p.add_argument("--flatten", action="store_true", help="flatten the generated filled PDFs")
     p.add_argument("--copy-form", action="store_true", help="copy form.pdf into each case instead of symlinking")
+    p.add_argument(
+        "--generator", choices=GENERATORS, default="gemini",
+        help="--form only: persona source; 'faker' is an offline fallback with generic values (default: gemini)",
+    )
+    p.add_argument(
+        "--generator-model", metavar="MODEL",
+        help="--form only: model for personas (default: $PDF_WIZARD_GENERATOR_MODEL, else the filler model)",
+    )
+    p.add_argument(
+        "--reuse-personas", action="store_true",
+        help="--form only: rebuild cases from existing <out>/cases/*/persona.json without calling the generator",
+    )
     return p
 
 
@@ -1303,6 +1109,9 @@ def main(argv: Sequence[str] | None = None, *, stdout: TextIO | None = None) -> 
         seed=args.seed,
         flatten=args.flatten,
         copy_form=args.copy_form,
+        generator=args.generator,
+        generator_model_id=args.generator_model,
+        reuse_personas=args.reuse_personas,
     )
     print(
         f"Generated {manifest.count} fake filled PDF(s) and eval case(s) in {manifest.output_dir}\n"

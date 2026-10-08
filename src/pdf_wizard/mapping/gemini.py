@@ -135,6 +135,26 @@ class GeminiMapper:
         log.info("gemini schema call finished: model=%s ms=%d fields=%d", model, elapsed, len(parsed.fields))
         return parsed, model
 
+    def generate(
+        self, parts: list[PromptPart], *, system_prompt: str, response_schema: Any, model: str | None = None
+    ) -> Any:
+        """One structured call with a caller-supplied prompt and schema (used by eval tooling)."""
+        client = self._get_client()
+        contents = [types.Content(role="user", parts=[_sdk_part(p) for p in parts])]
+        model = model or self._settings.model
+        started = time.perf_counter()
+        config = self._config(system_prompt=system_prompt, response_schema=response_schema)
+        try:
+            response = client.models.generate_content(model=model, contents=contents, config=config)
+        except Exception as exc:
+            log.warning("gemini generate failed: model=%s error=%s", model, type(exc).__name__)
+            raise _translate_error(exc) from exc
+        try:
+            return _parse_response(response, schema_cls=response_schema)
+        except UnusableResponseError as exc:
+            log.warning("gemini generate response unusable: model=%s ms=%d problem=%s", model, _elapsed_ms(started), exc)
+            raise MappingError(UNUSABLE_RESPONSE) from exc
+
     def _config(
         self,
         *,

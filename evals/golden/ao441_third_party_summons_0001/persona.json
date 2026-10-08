@@ -1,0 +1,118 @@
+{
+  "generator": "gemini",
+  "model": "gemini-3.8-flash",
+  "prompt_version": "2026-10-08.1",
+  "scenario": "Process server Arthur Pendelton completes and files the return of service for a third-party summons served on David C. Miller in a federal commercial dispute.",
+  "values": [
+    {
+      "field_id": "F1",
+      "value": "        Northern District of California",
+      "source_line": "This action is being litigated in the United States District Court for the Northern District of California."
+    },
+    {
+      "field_id": "F2",
+      "value": "10/12/2023",
+      "source_line": "The summons issue date shown today is 10/12/2023."
+    },
+    {
+      "field_id": "F3",
+      "value": "Apex Logistics LLC",
+      "source_line": "The plaintiff in this proceeding is Apex Logistics LLC."
+    },
+    {
+      "field_id": "F4",
+      "value": "Summit Freight Inc.",
+      "source_line": "The named defendant is Summit Freight Inc."
+    },
+    {
+      "field_id": "F5",
+      "value": "David C. Miller",
+      "source_line": "The third-party complaint names David C. Miller as the third-party defendant."
+    },
+    {
+      "field_id": "F6",
+      "value": "David C. Miller, 742 Evergreen Terrace, Oakland, CA 94611",
+      "source_line": "The third-party defendant's name and address is David C. Miller, 742 Evergreen Terrace, Oakland, CA 94611."
+    },
+    {
+      "field_id": "F7",
+      "value": "Summit Freight Inc.",
+      "source_line": "The third-party plaintiff is Defendant Summit Freight Inc."
+    },
+    {
+      "field_id": "F8",
+      "value": "Marcus Vance, Esq., Vance & Associates LLP, 100 Pine Street, Suite 1500, San Francisco, CA 94111",
+      "source_line": "The defendant is represented by Marcus Vance, Esq., Vance & Associates LLP, 100 Pine Street, Suite 1500, San Francisco, CA 94111."
+    },
+    {
+      "field_id": "F9",
+      "value": "Elena Rostova, Esq., Rostova Litigation Group, 201 Mission Street, Suite 800, San Francisco, CA 94105",
+      "source_line": "Counsel of record for plaintiff is Elena Rostova, Esq., Rostova Litigation Group, 201 Mission Street, Suite 800, San Francisco, CA 94105."
+    },
+    {
+      "field_id": "F11",
+      "value": "Apex Logistics LLC",
+      "source_line": "The underlying lawsuit was initiated by Plaintiff Apex Logistics LLC."
+    },
+    {
+      "field_id": "F12",
+      "value": "3:23-cv-04892-WHO",
+      "source_line": "The assigned civil action number is 3:23-cv-04892-WHO."
+    },
+    {
+      "field_id": "F13",
+      "value": "10/19/2023",
+      "source_line": "The return of service shows a returned date of 10/19/2023."
+    },
+    {
+      "field_id": "F14",
+      "value": "10/16/2023",
+      "source_line": "The process server recorded the date received as 10/16/2023."
+    },
+    {
+      "field_id": "F16",
+      "value": "served",
+      "source_line": "Regarding the method of service, I personally served the summons on the individual at the specified address."
+    },
+    {
+      "field_id": "F22",
+      "value": "15.00",
+      "source_line": "The travel voucher itemizes a cost of travel of 15.00."
+    },
+    {
+      "field_id": "F24",
+      "value": "Bay Area Process Servers LLC, 500 Washington St, Suite 400, San Francisco, CA 94111",
+      "source_line": "Arthur provides his business address as Bay Area Process Servers LLC, 500 Washington St, Suite 400, San Francisco, CA 94111."
+    },
+    {
+      "field_id": "F25",
+      "value": "Arthur Pendelton",
+      "source_line": "The process server executing this service is Arthur Pendelton."
+    },
+    {
+      "field_id": "F26",
+      "value": "David C. Miller",
+      "source_line": "The individual to be served listed on the return is David C. Miller."
+    },
+    {
+      "field_id": "F27",
+      "value": "742 Evergreen Terrace, Oakland, CA 94611",
+      "source_line": "The location where delivery was executed is 742 Evergreen Terrace, Oakland, CA 94611."
+    },
+    {
+      "field_id": "F28",
+      "value": "10/18/2023",
+      "source_line": "Personal delivery was effected on the date of 10/18/2023."
+    },
+    {
+      "field_id": "F32",
+      "value": "85.00",
+      "source_line": "The total invoice amount reflects a cost of services of 85.00."
+    },
+    {
+      "field_id": "F34",
+      "value": "Recipient confirmed his identity and accepted the documents without incident.",
+      "source_line": "Arthur noted in remarks that Recipient confirmed his identity and accepted the documents without incident."
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+INTAKE SUMMARY — IRS_FSS4_EIN_APPLICATION
+Synthetic Record — irs_fss4_ein_application_0001
+
+The legal name of the entity requesting the EIN is Alvarez Consulting LLC. We will operate publicly under the trade name Alvarez Strategy Partners. Please deliver all correspondence to our office at 742 Evergreen Terrace, Suite 200. Our business office is located in Springfield, IL 62704.
+
+The enterprise is established in Sangamon County, IL. The individual serving as responsible party is Elena Alvarez. The responsible party's SSN is 900-01-2345. Confirm that this application is for a limited liability company (LLC) by selecting Yes.
+
+As a single-owner firm, the number of LLC members is 1. Confirm that the LLC was organized in the United States by marking Yes. Under entity classification, select the checkbox for other (specify). For the other entity classification line, specify Single-member LLC.
+
+For the primary reason for applying, mark the box for started new business (specify type). Specify the new business endeavor as Management consulting. The official date business started or acquired is 10/15/2023. Our fiscal accounting year ends in December.
+
+We expect 0 agricultural employees in the coming year. The expected number of household workers is 0. We project employing 2 other staff members over the next twelve months. Our first date wages or annuities were paid will be 11/01/2023.
+
+For our principal business activity category, choose other (specify). For the other activity line, describe our service sector as Consulting services. Our primary client deliverables consist of Strategic planning and business advisory services. Mark No to indicate that this entity has never previously received an EIN.
+
+The application is authorized by Elena Alvarez, Managing Member. You can reach me directly at 555-019-2834.

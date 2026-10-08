@@ -1,0 +1,10 @@
+INTAKE SUMMARY — IRS_F4506T_TRANSCRIPT
+Synthetic Record — irs_f4506t_transcript_0001
+
+The primary taxpayer name shown on the tax return is Marcus Vance. My social security number is 900-01-4829. My current address is 742 Evergreen Ter, Springfield, OR 97477. The previous address shown on the last return filed was 104 Elm St, Eugene, OR 97401.
+
+The mortgage lender assigned customer file number MV948201 to the application. The tax form number for which I am requesting records is 1040. Please select 6a. Return Transcript for the specified years. Signatory attests that he/she has read the attestation clause and upon so reading declares that he/she has the authority to sign the Form 4506-T.
+
+The best contact number for the taxpayer is 555-0182. The ending month for the first tax period requested is 12. The closing day for the first requested period is 31. The first tax year requested is 2021.
+
+The ending month for the second tax period is 12. The second period closing day is 31. The second tax year requested is 2022.

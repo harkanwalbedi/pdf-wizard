@@ -3,7 +3,7 @@
 PDF Wizard is a toolkit for **fillable (AcroForm) PDF forms**—such as tax forms (W-9, W-4, W-8BEN, 8822), clinic intake packets, and applications—supporting **two core workflows**:
 
 1. **Use Case 1 — Fill PDF Forms from Your Documents & Data (`pdf-wizard`):** Automatically populate blank AcroForm PDFs from structured records (`JSON`/`CSV`), unstructured documents (scanned PDFs, smartphone photos, `.eml` emails, plain text), previously filled reference forms, and notes—with deterministic guardrails and verbatim evidence citations for every filled field.
-2. **Use Case 2 — Generate Synthetic Form Data & Filled PDFs (`python -m evals.dataset`):** Synthesize 10s or 100s of realistic fake records, ground-truth filled PDFs, and matching unstructured source documents (`txt`, `scanned_pdf`, `jpeg`, `png`, `pdf`, `eml`) using `Faker`—for built-in IRS/application forms or **any custom AcroForm PDF** (runs 100% locally offline, no AI credentials required).
+2. **Use Case 2 — Generate Synthetic Form Data & Filled PDFs (`python -m evals.dataset`):** Synthesize 10s or 100s of realistic fake records, ground-truth filled PDFs, and matching unstructured source documents (`txt`, `scanned_pdf`, `jpeg`, `png`, `pdf`, `eml`) for built-in IRS/application forms (`Faker`, offline) or **any custom AcroForm PDF** (Gemini personas checked by the product guardrails; `--generator faker` works offline).
 
 ---
 
@@ -14,7 +14,7 @@ PDF Wizard is a toolkit for **fillable (AcroForm) PDF forms**—such as tax form
 | **Goal** | Fill a blank PDF form using your real or test documents | Generate synthetic filled PDFs + realistic source documents + ground truth |
 | **Inputs** | Blank `.pdf` form + `--data`, `--doc`, `--reference`, `--note` | Blank `.pdf` form (`--template` or `--form`) + `--count` + `--formats` |
 | **Outputs** | Filled PDF (`.pdf`) + masked audit report (`.json`) | `filled/*.pdf` (filled PDFs) + `cases/*/sources/*` + `expected.json` |
-| **Requires Gemini / Cloud?** | Yes (`fill` and `schema --enrich`); `inspect` and deterministic `schema` run offline | **No** — runs 100% locally using `Faker`, `ReportLab`, `Pillow`, and `pypdf` |
+| **Requires Gemini / Cloud?** | Yes (`fill` and `schema --enrich`); `inspect` and deterministic `schema` run offline | Built-in templates: **no**. `--form`: yes by default (`--generator faker` is an offline fallback) |
 | **Interfaces** | CLI (`pdf-wizard`), Web UI (`pdf-wizard serve`), Python API (`fill_form`) | CLI (`python -m evals.dataset`) and Python API (`generate_dataset`) |
 
 ---
@@ -45,7 +45,7 @@ flowchart LR
     E --> G["Masked Audit Report"]
 ```
 
-1. **Inspect & Detect Schema (Stage 1):** reads the PDF's widgets (type, options, max length, comb flags, format scripts), extracts tooltips and nearby printed labels, infers sections, disambiguates split comb fields (SSN `3-2-4`, EIN `2-7`, phone `3-3-4`, ZIP+4 `5-4`), and groups mutually-exclusive checkboxes (`G1`, `G2`, ...). For forms with missing labels, `--enrich` runs a visual pass on the blank PDF alone (with zero user data). Schemas are cached by `SHA-256` and can be saved as JSON (`pdf-wizard schema`).
+1. **Inspect & Detect Schema (Stage 1):** reads the PDF's widgets (type, options, max length, comb flags, format scripts), extracts tooltips and nearby printed labels, disambiguates split comb fields (SSN `3-2-4`, EIN `2-7`, phone `3-3-4`, ZIP+4 `5-4`), and groups mutually-exclusive checkboxes (`G1`, `G2`, ...). When labels look cryptic, duplicated, or overlong, `fill` automatically runs a visual pass with Gemini on the blank PDF alone (zero user data), drawing each field's box and ID on the page so the model can read labels, sections, and groups; the result is validated before it is trusted and falls back to the deterministic schema on failure. Enriched schemas are cached in memory and on disk (`~/.cache/pdf-wizard/schemas`, keyed by form `SHA-256`, prompt version, and model), so each form is enriched at most once. Schemas can be saved as JSON (`pdf-wizard schema`).
 2. **Load Sources:** normalizes JSON/CSV records, plain text, emails (`.eml`), text and scanned PDFs, JPEG/PNG images, previously filled reference PDFs, and user notes. Today's date is always available as `S0`.
 3. **Map (Stage 2):** one structured-output Gemini call proposes values for fields answered by the sources, citing `source_id` and a verbatim quote (or JSON key path) as `evidence`.
 4. **Guardrails:** deterministically verifies every proposal:
@@ -124,7 +124,7 @@ export GOOGLE_CLOUD_PROJECT=your-gcp-project-id
 - `-o, --output FILE` — where to write the filled PDF
 - `--report FILE` — write a JSON audit report (sensitive values masked)
 - `--schema FILE` — reuse a pre-detected schema JSON (verified by `form_sha256`), skipping redundant visual blank-form uploads
-- `--enrich-schema` — run Stage 1 visual AI schema enrichment on the blank form before filling
+- `--enrich-schema` / `--no-enrich-schema` — always / never run Stage 1 visual schema enrichment (default: automatic, only when labels look unreliable; one extra Gemini call per new form, then cached)
 - `--flatten` — produce a non-editable PDF (by default, outputs remain editable)
 - `--min-confidence X` — override `PDF_WIZARD_MIN_CONFIDENCE` for one run (`0.0`–`1.0`)
 - `--dry-run` — map and verify values through guardrails without writing a PDF
@@ -160,7 +160,7 @@ Sensitive values look like `***-**-6789` in reports, and their evidence is repla
 
 ## Use Case 2: Generating Synthetic Form Data & Filled PDFs
 
-Need realistic test data, pre-filled sample PDFs, or a large-scale multimodal benchmark for a new form? The synthetic dataset generator (`python -m evals.dataset`) runs **100% locally offline** (no LLM calls) using `Faker` + Stage 1 schema detection + `fill_pdf`.
+Need realistic test data, pre-filled sample PDFs, or a large-scale multimodal benchmark for a new form? The synthetic dataset generator (`python -m evals.dataset`) uses hand-written `Faker` templates for the built-in forms (offline) and Gemini personas for custom forms.
 
 For every generated record `1..N`, it automatically produces:
 1. **`<out>/filled/<id>.pdf`** — A ground-truth AcroForm PDF populated with realistic synthetic data (editable or flattened with `--flatten`).
@@ -186,7 +186,9 @@ Built-in templates: `irs_w9`, `irs_w4`, `irs_8822`, `irs_w8ben`, `job_applicatio
 
 ### Generate Synthetic Data for Any Custom AcroForm PDF
 
-Pass `--form path/to/your_form.pdf` to inspect any arbitrary AcroForm PDF, infer field semantics (names, SSN/EIN/phone/ZIP comb splits, dates, emails, currency, checkbox mutex groups, dropdowns) via Stage 1 schema detection, and synthesize realistic filled PDFs and source documents:
+Pass `--form path/to/your_form.pdf`. The generator reads the form's field catalog and asks Gemini for coherent fictional personas: values plus, for each value, the sentence of the intake document that states it. Every persona then goes through the **same guardrails as the filler** (type, options, `max_len`, comb, format mask, one checkbox per group, and the value must be stated by its sentence); failing values are dropped from both the document and `expected.json`. Raw personas are saved to `cases/<id>/persona.json`, and `--reuse-personas` rebuilds cases from them without calling Gemini.
+
+To reduce model-grading-itself bias, use a different generator model than the filler (`--generator-model` or `PDF_WIZARD_GENERATOR_MODEL`; a warning is printed if they match), and keep a hand-reviewed golden set (`evals/golden/`, see its `REVIEW.md`).
 
 ```bash
 .venv/bin/python -m evals.dataset \
@@ -194,6 +196,7 @@ Pass `--form path/to/your_form.pdf` to inspect any arbitrary AcroForm PDF, infer
     --count 50 \
     --formats txt,scanned_pdf,jpeg,png,pdf,eml \
     --seed 42 \
+    --generator-model <other-model-id> \
     --out /tmp/custom_dataset
 ```
 
@@ -209,6 +212,9 @@ Pass `--form path/to/your_form.pdf` to inspect any arbitrary AcroForm PDF, infer
 | `--seed N` | `42` | Random seed for deterministic, reproducible generation |
 | `--flatten` | `False` | Flatten generated PDFs in `filled/*.pdf` into non-editable documents |
 | `--copy-form` | `False` | Copy `form.pdf` into each case folder instead of hardlinking/symlinking |
+| `--generator` | `gemini` | `--form` only: `gemini` personas, or `faker` (offline; generic values, for smoke tests) |
+| `--generator-model ID` | `$PDF_WIZARD_GENERATOR_MODEL`, else the filler model | `--form` only: model that writes personas |
+| `--reuse-personas` | `False` | `--form` only: rebuild cases from existing `cases/*/persona.json` without model calls |
 
 ### Benchmark Models Against Checked-in or Generated Datasets
 
@@ -237,10 +243,13 @@ See [`evals/README.md`](evals/README.md) for full details on scoring precision, 
 | `PDF_WIZARD_TEMPERATURE` | model default | Sampling temperature (`0.0`–`2.0`) |
 | `PDF_WIZARD_TIMEOUT_S` | `180` | Timeout per model request in seconds (`10`–`900`) |
 | `PDF_WIZARD_LOG_LEVEL` | `WARNING` | Log level; logs never contain field values or document text |
+| `PDF_WIZARD_SCHEMA_CACHE` | `1` | `0` disables the on-disk cache of enriched schemas |
+| `PDF_WIZARD_SCHEMA_CACHE_DIR` | `$XDG_CACHE_HOME/pdf-wizard/schemas` | Where enriched schemas (labels only, no values) are cached (`0700` dir, `0600` files) |
+| `PDF_WIZARD_GENERATOR_MODEL` | filler model | Default `--generator-model` for `evals.dataset --form` |
 
 ## Privacy and security
 
-- **Where data goes:** your documents and form are sent only to Gemini in your configured Google Cloud project (or paid-tier Gemini API). Nothing else leaves your machine. Synthetic data generation (`evals.dataset`), `pdf-wizard inspect`, and deterministic `pdf-wizard schema` make zero network calls.
+- **Where data goes:** your documents and form are sent only to Gemini in your configured Google Cloud project (or paid-tier Gemini API). Nothing else leaves your machine. Built-in-template data generation (`evals.dataset --template`), `pdf-wizard inspect`, and deterministic `pdf-wizard schema` make zero network calls. Schema enrichment sends only the blank form.
 - **Zero-PII logs & masked reports:** logs record only IDs, counts, timings, and error types with a redaction filter as a safety net. Reports and the web UI mask sensitive values.
 - **Untrusted files:** content-based file type verification, strict byte/page/field caps (`10 MB` per file, `20 MB` total, `100` pages, `1,000` fields), and no JavaScript execution. Document text and form labels are treated strictly as untrusted data.
 
@@ -286,7 +295,9 @@ src/pdf_wizard/
 evals/
     harness.py      Case loader, validator, and precision/recall/hallucination scorer
     run.py          Live model & threshold benchmark CLI (`python -m evals.run`)
-    dataset.py      Faker-powered synthetic PDF & multimodal eval dataset generator (`python -m evals.dataset`)
+    dataset.py      Synthetic PDF & multimodal eval dataset generator (`python -m evals.dataset`)
+    personas.py     Gemini persona generator + guardrail validation for custom forms
+    golden/         One case per real form, pending human review (see REVIEW.md)
     make_cases.py   Generator for the synthetic cases in `evals/cases/`
     cases/          8 benchmark cases (4 synthetic + 4 official IRS forms: W-9, W-4, 8822, W-8BEN)
 tests/              Offline pytest suites + programmatic PDF generator (`pdf_factory.py`)

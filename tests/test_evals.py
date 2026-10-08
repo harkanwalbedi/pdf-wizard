@@ -488,16 +488,82 @@ def test_dataset_generator_all_templates_and_formats(tmp_path):
         assert run.metrics.recall == 1.0
         assert run.metrics.hallucination_rate == 0.0
 
-    # Also test custom --form (generic schema-driven Faker synthesizer)
+    # Also test custom --form with the offline Faker persona fallback
     custom_out = tmp_path / "custom_synth"
     custom_manifest = generate_dataset(
         custom_out,
         form_path=TEMPLATES["job_application"],
         count=2,
-        formats=("txt", "scanned_pdf"),
+        formats=("txt", "pdf"),
         seed=7,
+        generator="faker",
     )
     assert len(custom_manifest.filled_pdfs) == 2
     custom_cases = discover_cases(custom_out / "cases")
     validate_cases(custom_cases, Settings())
+    for case in custom_cases:
+        assert (case.form_path.parent / "persona.json").exists()
+        [run] = run_case(case, _oracle_mapper_for_case(case), model="oracle", thresholds=[0.7], settings=Settings())
+        assert run.error is None
+        assert run.metrics.precision == 1.0
+        assert run.metrics.recall == 1.0
+
+
+class _PersonaGenerator:
+    """Stands in for GeminiMapper.generate (no enrich_schema, so no visual enrichment)."""
+
+    def __init__(self, batch):
+        self.batch = batch
+        self.calls = []
+
+    def generate(self, parts, *, system_prompt, response_schema, model=None):
+        self.calls.append(model)
+        return self.batch
+
+
+def test_dataset_gemini_personas_are_validated_and_reusable(tmp_path):
+    from evals.dataset import TEMPLATES, generate_dataset
+    from evals.personas import Persona, PersonaBatch, PersonaValue
+    from pdf_wizard.pdf.inspector import open_form
+    from pdf_wizard.schema import apply_schema, detect_schema
+
+    form_path = TEMPLATES["job_application"]
+    form = open_form(form_path.read_bytes(), limits=Settings().limits)
+    fields = [f for f in apply_schema(form.info, detect_schema(form)).fields if f.writable]
+    text = [f for f in fields if f.type.value == "text" and not f.comb and not f.format_hint]
+    good, ungrounded, too_long = text[0], text[1], next(f for f in text[2:] if f.max_len) if any(
+        f.max_len for f in text[2:]
+    ) else None
+    values = [
+        PersonaValue(field_id=good.id, value="Ada Lovelace", source_line="Her name is Ada Lovelace."),
+        PersonaValue(field_id=ungrounded.id, value="Analytical Engine", source_line="She builds machines."),
+        PersonaValue(field_id="F9999", value="x", source_line="Unknown field x."),
+    ]
+    if too_long is not None:
+        long_value = "Z" * (too_long.max_len + 5)
+        values.append(PersonaValue(field_id=too_long.id, value=long_value, source_line=f"Code {long_value}."))
+    gen = _PersonaGenerator(PersonaBatch(personas=[Persona(scenario="test", values=values)]))
+
+    out = tmp_path / "gem"
+    generate_dataset(out, form_path=form_path, count=1, formats=("txt",), generator="gemini",
+                     generator_model_id="gen-model", mapper=gen)
+    assert gen.calls == ["gen-model"]
+    [case_dir] = sorted((out / "cases").iterdir())
+    expected = json.loads((case_dir / "expected.json").read_text())
+    assert expected[good.name] == "Ada Lovelace"
+    assert expected[ungrounded.name] is None  # the sentence doesn't state the value
+    if too_long is not None:
+        assert expected[too_long.name] is None  # exceeds max_len
+    source = (case_dir / "sources" / "intake_notes.txt").read_text()
+    assert "Ada Lovelace" in source and "builds machines" not in source  # rejected sentences are removed
+    manifest = json.loads((out / "manifest.json").read_text())
+    assert manifest["generator_model"] == "gen-model" and manifest["dropped_values"] >= 2
+
+    class _NoCalls(_PersonaGenerator):
+        def generate(self, *args, **kwargs):
+            raise AssertionError("the generator must not be called when reusing personas")
+
+    generate_dataset(out, form_path=form_path, count=1, formats=("txt",), generator="gemini",
+                     reuse_personas=True, mapper=_NoCalls(None))
+    assert json.loads((case_dir / "expected.json").read_text()) == expected
 

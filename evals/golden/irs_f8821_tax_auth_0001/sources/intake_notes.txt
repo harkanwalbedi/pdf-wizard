@@ -1,0 +1,12 @@
+INTAKE SUMMARY — IRS_F8821_TAX_AUTH
+Synthetic Record — irs_f8821_tax_auth_0001
+
+The taxpayer name and address on file is Arthur Pendelton, 104 Meadow Lane, Columbus, OH 43215. Please use taxpayer identification number 942-00-1842 for this authorization. My daytime contact number is (614) 555-0182. The designated representative is Clara Higgins, CPA, 742 Evergreen Terrace, Suite 200, Columbus, OH 43215.
+
+Please check if to be sent copies of notices and communications so that Clara receives all IRS correspondence. The representative's assigned CAF number is 0305-67891R. Her preparer tax identification number is P01234567. Clara can be reached at office phone (614) 555-0144.
+
+Documents can be sent to her office fax at (614) 555-0145. The first row should specify Income as the type of tax information. The corresponding tax form number is 1040. The tax years authorized for individual filing are 2021, 2022, 2023.
+
+For the first row specific tax matters, please enter None. The second category to inspect is Employment. The payroll form number to authorize is 941. The authorized periods for the payroll filings are 2022, 2023.
+
+The specific matter description for the payroll taxes is Quarterly payroll tax review. The document was prepared and dated 10/24/2023.

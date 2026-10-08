@@ -1,0 +1,98 @@
+{
+  "generator": "gemini",
+  "model": "gemini-3.8-flash",
+  "prompt_version": "2026-10-08.1",
+  "scenario": "A sole proprietor authorizes his certified public accountant to access individual and payroll tax records for prior years.",
+  "values": [
+    {
+      "field_id": "F6",
+      "value": "Arthur Pendelton, 104 Meadow Lane, Columbus, OH 43215",
+      "source_line": "The taxpayer name and address on file is Arthur Pendelton, 104 Meadow Lane, Columbus, OH 43215."
+    },
+    {
+      "field_id": "F7",
+      "value": "942-00-1842",
+      "source_line": "Please use taxpayer identification number 942-00-1842 for this authorization."
+    },
+    {
+      "field_id": "F8",
+      "value": "(614) 555-0182",
+      "source_line": "My daytime contact number is (614) 555-0182."
+    },
+    {
+      "field_id": "F11",
+      "value": "Clara Higgins, CPA, 742 Evergreen Terrace, Suite 200, Columbus, OH 43215",
+      "source_line": "The designated representative is Clara Higgins, CPA, 742 Evergreen Terrace, Suite 200, Columbus, OH 43215."
+    },
+    {
+      "field_id": "F12",
+      "value": "checked",
+      "source_line": "Please check if to be sent copies of notices and communications so that Clara receives all IRS correspondence."
+    },
+    {
+      "field_id": "F13",
+      "value": "0305-67891R",
+      "source_line": "The representative's assigned CAF number is 0305-67891R."
+    },
+    {
+      "field_id": "F14",
+      "value": "P01234567",
+      "source_line": "Her preparer tax identification number is P01234567."
+    },
+    {
+      "field_id": "F15",
+      "value": "(614) 555-0144",
+      "source_line": "Clara can be reached at office phone (614) 555-0144."
+    },
+    {
+      "field_id": "F16",
+      "value": "(614) 555-0145",
+      "source_line": "Documents can be sent to her office fax at (614) 555-0145."
+    },
+    {
+      "field_id": "F30",
+      "value": "Income",
+      "source_line": "The first row should specify Income as the type of tax information."
+    },
+    {
+      "field_id": "F31",
+      "value": "1040",
+      "source_line": "The corresponding tax form number is 1040."
+    },
+    {
+      "field_id": "F32",
+      "value": "2021, 2022, 2023",
+      "source_line": "The tax years authorized for individual filing are 2021, 2022, 2023."
+    },
+    {
+      "field_id": "F33",
+      "value": "None",
+      "source_line": "For the first row specific tax matters, please enter None."
+    },
+    {
+      "field_id": "F34",
+      "value": "Employment",
+      "source_line": "The second category to inspect is Employment."
+    },
+    {
+      "field_id": "F35",
+      "value": "941",
+      "source_line": "The payroll form number to authorize is 941."
+    },
+    {
+      "field_id": "F36",
+      "value": "2022, 2023",
+      "source_line": "The authorized periods for the payroll filings are 2022, 2023."
+    },
+    {
+      "field_id": "F37",
+      "value": "Quarterly payroll tax review",
+      "source_line": "The specific matter description for the payroll taxes is Quarterly payroll tax review."
+    },
+    {
+      "field_id": "F45",
+      "value": "10/24/2023",
+      "source_line": "The document was prepared and dated 10/24/2023."
+    }
+  ]
+}

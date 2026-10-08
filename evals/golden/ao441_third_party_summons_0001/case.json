@@ -1,0 +1,10 @@
+{
+  "description": "Synthetic ao441_third_party_summons record #1 (txt).",
+  "today": "2026-10-07",
+  "sources": [
+    {
+      "role": "doc",
+      "file": "sources/intake_notes.txt"
+    }
+  ]
+}

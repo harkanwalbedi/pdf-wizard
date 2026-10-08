@@ -1,0 +1,138 @@
+{
+  "generator": "gemini",
+  "model": "gemini-3.8-flash",
+  "prompt_version": "2026-10-08.1",
+  "scenario": "Elena Alvarez files Form SS-4 to obtain an EIN for her newly established single-member management consulting LLC.",
+  "values": [
+    {
+      "field_id": "F2",
+      "value": "Alvarez Consulting LLC",
+      "source_line": "The legal name of the entity requesting the EIN is Alvarez Consulting LLC."
+    },
+    {
+      "field_id": "F3",
+      "value": "Alvarez Strategy Partners",
+      "source_line": "We will operate publicly under the trade name Alvarez Strategy Partners."
+    },
+    {
+      "field_id": "F5",
+      "value": "742 Evergreen Terrace, Suite 200",
+      "source_line": "Please deliver all correspondence to our office at 742 Evergreen Terrace, Suite 200."
+    },
+    {
+      "field_id": "F6",
+      "value": "Springfield, IL 62704",
+      "source_line": "Our business office is located in Springfield, IL 62704."
+    },
+    {
+      "field_id": "F9",
+      "value": "Sangamon County, IL",
+      "source_line": "The enterprise is established in Sangamon County, IL."
+    },
+    {
+      "field_id": "F10",
+      "value": "Elena Alvarez",
+      "source_line": "The individual serving as responsible party is Elena Alvarez."
+    },
+    {
+      "field_id": "F11",
+      "value": "900-01-2345",
+      "source_line": "The responsible party's SSN is 900-01-2345."
+    },
+    {
+      "field_id": "F12",
+      "value": "checked",
+      "source_line": "Confirm that this application is for a limited liability company (LLC) by selecting Yes."
+    },
+    {
+      "field_id": "F14",
+      "value": "1",
+      "source_line": "As a single-owner firm, the number of LLC members is 1."
+    },
+    {
+      "field_id": "F15",
+      "value": "checked",
+      "source_line": "Confirm that the LLC was organized in the United States by marking Yes."
+    },
+    {
+      "field_id": "F38",
+      "value": "checked",
+      "source_line": "Under entity classification, select the checkbox for other (specify)."
+    },
+    {
+      "field_id": "F39",
+      "value": "Single-member LLC",
+      "source_line": "For the other entity classification line, specify Single-member LLC."
+    },
+    {
+      "field_id": "F43",
+      "value": "checked",
+      "source_line": "For the primary reason for applying, mark the box for started new business (specify type)."
+    },
+    {
+      "field_id": "F44",
+      "value": "Management consulting",
+      "source_line": "Specify the new business endeavor as Management consulting."
+    },
+    {
+      "field_id": "F59",
+      "value": "10/15/2023",
+      "source_line": "The official date business started or acquired is 10/15/2023."
+    },
+    {
+      "field_id": "F60",
+      "value": "December",
+      "source_line": "Our fiscal accounting year ends in December."
+    },
+    {
+      "field_id": "F61",
+      "value": "0",
+      "source_line": "We expect 0 agricultural employees in the coming year."
+    },
+    {
+      "field_id": "F62",
+      "value": "0",
+      "source_line": "The expected number of household workers is 0."
+    },
+    {
+      "field_id": "F63",
+      "value": "2",
+      "source_line": "We project employing 2 other staff members over the next twelve months."
+    },
+    {
+      "field_id": "F65",
+      "value": "11/01/2023",
+      "source_line": "Our first date wages or annuities were paid will be 11/01/2023."
+    },
+    {
+      "field_id": "F77",
+      "value": "checked",
+      "source_line": "For our principal business activity category, choose other (specify)."
+    },
+    {
+      "field_id": "F78",
+      "value": "Consulting services",
+      "source_line": "For the other activity line, describe our service sector as Consulting services."
+    },
+    {
+      "field_id": "F79",
+      "value": "Strategic planning and business advisory services",
+      "source_line": "Our primary client deliverables consist of Strategic planning and business advisory services."
+    },
+    {
+      "field_id": "F81",
+      "value": "checked",
+      "source_line": "Mark No to indicate that this entity has never previously received an EIN."
+    },
+    {
+      "field_id": "F87",
+      "value": "Elena Alvarez, Managing Member",
+      "source_line": "The application is authorized by Elena Alvarez, Managing Member."
+    },
+    {
+      "field_id": "F88",
+      "value": "555-019-2834",
+      "source_line": "You can reach me directly at 555-019-2834."
+    }
+  ]
+}

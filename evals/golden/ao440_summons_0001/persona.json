@@ -1,0 +1,98 @@
+{
+  "generator": "gemini",
+  "model": "gemini-3.8-flash",
+  "prompt_version": "2026-10-08.1",
+  "scenario": "A process server completing proof of personal service on an individual defendant in a federal civil action in the Northern District of California.",
+  "values": [
+    {
+      "field_id": "F1",
+      "value": "        Northern District of California",
+      "source_line": "The action was initiated in the Northern District of California."
+    },
+    {
+      "field_id": "F2",
+      "value": "10/12/2023",
+      "source_line": "The court clerk issued the summons on 10/12/2023."
+    },
+    {
+      "field_id": "F3",
+      "value": "Apex Logistics LLC",
+      "source_line": "The plaintiff in this lawsuit is Apex Logistics LLC."
+    },
+    {
+      "field_id": "F4",
+      "value": "Marcus Vance",
+      "source_line": "The lawsuit names Marcus Vance as the defendant."
+    },
+    {
+      "field_id": "F5",
+      "value": "Marcus Vance, 742 Evergreen Terrace, Oakland, CA 94611",
+      "source_line": "Service of process should be made upon Marcus Vance, 742 Evergreen Terrace, Oakland, CA 94611."
+    },
+    {
+      "field_id": "F6",
+      "value": "Elena Rostova, Esq., Rostova & Partners LLP, 500 Howard Street, Suite 400, San Francisco, CA 94105",
+      "source_line": "Counsel of record for plaintiff is Elena Rostova, Esq., Rostova & Partners LLP, 500 Howard Street, Suite 400, San Francisco, CA 94105."
+    },
+    {
+      "field_id": "F8",
+      "value": "3:23-cv-04892-WHO",
+      "source_line": "The docket number assigned to the filing is 3:23-cv-04892-WHO."
+    },
+    {
+      "field_id": "F12",
+      "value": "10/14/2023",
+      "source_line": "The process server received the summons for service on 10/14/2023."
+    },
+    {
+      "field_id": "F14",
+      "value": "served",
+      "source_line": "I personally served the summons on the individual at the defendant's residential address."
+    },
+    {
+      "field_id": "F20",
+      "value": "18.50",
+      "source_line": "The mileage cost incurred for the delivery trip resulted in a travel fee of 18.50."
+    },
+    {
+      "field_id": "F21",
+      "value": "10/17/2023",
+      "source_line": "The proof of service was filled out and executed on 10/17/2023."
+    },
+    {
+      "field_id": "F23",
+      "value": "David K. Miller",
+      "source_line": "The server executing this return is David K. Miller."
+    },
+    {
+      "field_id": "F24",
+      "value": "Miller Process Service, 1200 Broadway, Suite 210, Oakland, CA 94612",
+      "source_line": "The agency's physical office is located at Miller Process Service, 1200 Broadway, Suite 210, Oakland, CA 94612."
+    },
+    {
+      "field_id": "F25",
+      "value": "Defendant confirmed his identity and accepted copy of summons and complaint.",
+      "source_line": "Under remarks, the server documented: Defendant confirmed his identity and accepted copy of summons and complaint."
+    },
+    {
+      "field_id": "F26",
+      "value": "Marcus Vance",
+      "source_line": "The summons was issued for Marcus Vance."
+    },
+    {
+      "field_id": "F27",
+      "value": "742 Evergreen Terrace, Oakland, CA 94611",
+      "source_line": "The server personally delivered the papers at 742 Evergreen Terrace, Oakland, CA 94611."
+    },
+    {
+      "field_id": "F28",
+      "value": "10/16/2023",
+      "source_line": "Hand delivery to the defendant was accomplished on 10/16/2023."
+    },
+    {
+      "field_id": "F33",
+      "value": "75.00",
+      "source_line": "The standard invoice includes a base service fee of 75.00."
+    }
+  ]
+}

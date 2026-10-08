@@ -1,0 +1,138 @@
+{
+  "generator": "gemini",
+  "model": "gemini-3.8-flash",
+  "prompt_version": "2026-10-08.1",
+  "scenario": "Litigation counsel Marcus Vance files a federal trial subpoena and process server return of service for key witness Gregory Thorne in a commercial dispute.",
+  "values": [
+    {
+      "field_id": "F1",
+      "value": "         Northern District of Illinois",
+      "source_line": "The action is pending in the United States District Court for the          Northern District of Illinois."
+    },
+    {
+      "field_id": "F2",
+      "value": "Marcus Vance, Vance & Sterling LLP, 200 W Madison St, Suite 1800, Chicago, IL 60606, 555-0144",
+      "source_line": "Counsel issuing the subpoena is Marcus Vance, Vance & Sterling LLP, 200 W Madison St, Suite 1800, Chicago, IL 60606, 555-0144."
+    },
+    {
+      "field_id": "F3",
+      "value": "Apex Logistics LLC",
+      "source_line": "The lawsuit was initiated by plaintiff Apex Logistics LLC."
+    },
+    {
+      "field_id": "F4",
+      "value": "Zenith Transport Corp.",
+      "source_line": "The action is brought against defendant Zenith Transport Corp."
+    },
+    {
+      "field_id": "F5",
+      "value": "Gregory Thorne",
+      "source_line": "Direct the subpoena to witness Gregory Thorne."
+    },
+    {
+      "field_id": "F6",
+      "value": "Everett McKinley Dirksen United States Courthouse, 219 S Dearborn St, Chicago, IL 60604",
+      "source_line": "The witness must appear for testimony at Everett McKinley Dirksen United States Courthouse, 219 S Dearborn St, Chicago, IL 60604."
+    },
+    {
+      "field_id": "F7",
+      "value": "Courtroom 1903",
+      "source_line": "Proceedings will take place in Courtroom 1903."
+    },
+    {
+      "field_id": "F8",
+      "value": "11/14/2024 9:30 am",
+      "source_line": "Testimony is scheduled for 11/14/2024 9:30 am."
+    },
+    {
+      "field_id": "F9",
+      "value": "Original signed copies of the Master Services Agreement dated January 15, 2023, and all related transit manifests from Q1 2023.",
+      "source_line": "The witness must bring Original signed copies of the Master Services Agreement dated January 15, 2023, and all related transit manifests from Q1 2023."
+    },
+    {
+      "field_id": "F10",
+      "value": "10/01/2024",
+      "source_line": "The subpoena issuance date is 10/01/2024."
+    },
+    {
+      "field_id": "F13",
+      "value": "Apex Logistics LLC",
+      "source_line": "Mr. Vance represents plaintiff Apex Logistics LLC in these proceedings."
+    },
+    {
+      "field_id": "F15",
+      "value": "1:23-cv-04812",
+      "source_line": "The matter is assigned case number 1:23-cv-04812."
+    },
+    {
+      "field_id": "F19",
+      "value": "Gregory Thorne",
+      "source_line": "The individual targeted for service is Gregory Thorne."
+    },
+    {
+      "field_id": "F20",
+      "value": "10/02/2024",
+      "source_line": "The process server received the documents on 10/02/2024."
+    },
+    {
+      "field_id": "F37",
+      "value": "served",
+      "source_line": "The server certified: served."
+    },
+    {
+      "field_id": "F21",
+      "value": "742 North Michigan Avenue",
+      "source_line": "The first line of the service address is 742 North Michigan Avenue."
+    },
+    {
+      "field_id": "F22",
+      "value": "Suite 400",
+      "source_line": "The second line of the service address is Suite 400."
+    },
+    {
+      "field_id": "F23",
+      "value": "Chicago, IL 60611",
+      "source_line": "The city, state, and zip code where served are Chicago, IL 60611."
+    },
+    {
+      "field_id": "F24",
+      "value": "10/04/2024",
+      "source_line": "Personal service was executed on 10/04/2024."
+    },
+    {
+      "field_id": "F27",
+      "value": "45.00",
+      "source_line": "The witness fee amount tendered was 45.00."
+    },
+    {
+      "field_id": "F28",
+      "value": "18.50",
+      "source_line": "The mileage cost of travel came to 18.50."
+    },
+    {
+      "field_id": "F29",
+      "value": "65.00",
+      "source_line": "The server billed for services cost an amount of 65.00."
+    },
+    {
+      "field_id": "F31",
+      "value": "10/05/2024",
+      "source_line": "The return of service was executed on 10/05/2024."
+    },
+    {
+      "field_id": "F33",
+      "value": "David Keller",
+      "source_line": "The server's legal name is David Keller."
+    },
+    {
+      "field_id": "F34",
+      "value": "Keller Process Service, 120 N LaSalle St, Suite 1500, Chicago, IL 60602",
+      "source_line": "The business address of the server is Keller Process Service, 120 N LaSalle St, Suite 1500, Chicago, IL 60602."
+    },
+    {
+      "field_id": "F35",
+      "value": "Subpoena and statutory witness attendance fee delivered personally to the witness at his place of business.",
+      "source_line": "Additional remarks recorded by the server state: Subpoena and statutory witness attendance fee delivered personally to the witness at his place of business."
+    }
+  ]
+}
