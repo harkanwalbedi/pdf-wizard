@@ -57,8 +57,9 @@ def detect_form_schema(
     settings: Settings,
     mapper: Mapper | None = None,
     enrich: bool | Literal["auto"] = False,
+    strict: bool = False,
 ) -> FormSchema:
-    return detect_schema(form_bytes, settings=settings, mapper=mapper, enrich=enrich)
+    return detect_schema(form_bytes, settings=settings, mapper=mapper, enrich=enrich, strict=strict)
 
 
 def fill_form(
@@ -129,7 +130,8 @@ def fill_form(
     )
     results = dict(checked.results)
     values = dict(checked.values)
-    warnings = [*form.info.warnings, *loaded.warnings, *checked.warnings]
+    schema_warnings = [w for w in schema.warnings if w not in form.info.warnings]
+    warnings = [*form.info.warnings, *schema_warnings, *loaded.warnings, *checked.warnings]
     lap("guardrails")
 
     # 6. Fill.

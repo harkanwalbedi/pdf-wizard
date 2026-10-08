@@ -237,7 +237,7 @@ def _schema(
     if args.enrich:
         mapper = mapper_factory(settings) if mapper_factory else _create_mapper(settings)
     form_bytes = _read(args.form, settings)
-    schema = detect_form_schema(form_bytes, settings=settings, mapper=mapper, enrich=args.enrich)
+    schema = detect_form_schema(form_bytes, settings=settings, mapper=mapper, enrich=args.enrich, strict=args.enrich)
     schema = schema.model_copy(update={"fields": _mask_fields_current_values(schema.fields)})
 
     if args.output is not None:

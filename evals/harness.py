@@ -409,6 +409,8 @@ class CaseRun:
     prompt_version: str | None = None
     usage: dict[str, int] = field(default_factory=dict)
     mapping_ms: int | None = None  # model latency; only on the run that called the model
+    schema_calls: int = 0  # schema-enrichment model calls made for this case (0 when cached or off)
+    schema_ms: int | None = None  # inspect + schema stage time; only on the first run
 
     @property
     def metrics(self) -> Metrics:
@@ -423,6 +425,7 @@ class ReplayMapper:
         self._called = False
         self._result: MappingResult | None = None
         self._error: Exception | None = None
+        self.schema_calls = 0
 
     def propose(self, request: MappingRequest) -> MappingResult:
         if not self._called:
@@ -438,6 +441,7 @@ class ReplayMapper:
 
     def enrich_schema(self, schema: Any, form_pdf: bytes) -> Any:
         # Results are cached by schema_cache, so this runs at most once per form per process.
+        self.schema_calls += 1
         return self._inner.enrich_schema(schema, form_pdf)  # type: ignore[attr-defined]
 
 
@@ -465,6 +469,7 @@ def run_case(
     for index, threshold in enumerate(thresholds):
         outcome: FillOutcome | None = None
         error: str | None = None
+        calls_before = replay.schema_calls
         try:
             outcome = fill_form(
                 form_bytes,
@@ -492,6 +497,8 @@ def run_case(
                 prompt_version=report.prompt_version if report else None,
                 usage=dict(report.usage) if report and index == 0 else {},
                 mapping_ms=report.timings_ms.get("mapping") if report and index == 0 else None,
+                schema_calls=replay.schema_calls - calls_before,
+                schema_ms=report.timings_ms.get("inspect") if report and index == 0 else None,
             )
         )
     return runs
@@ -524,11 +531,14 @@ class SuiteResult:
         tokens: Counter[str] = Counter()
         for r in calls:
             tokens.update(r.usage)
+        schema_ms = [r.schema_ms for r in calls if r.schema_ms is not None]
         return {
             "calls": len(calls),
             "errors": sum(1 for r in calls if r.error),
             "mean_latency_ms": round(sum(latencies) / len(latencies)) if latencies else None,
             "tokens": dict(tokens),
+            "schema_calls": sum(r.schema_calls for r in self.runs if r.config.model == model),
+            "mean_schema_ms": round(sum(schema_ms) / len(schema_ms)) if schema_ms else None,
         }
 
     def recommend(self, target_precision: float) -> RunConfig | None:

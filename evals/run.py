@@ -178,6 +178,11 @@ def format_report(
         tokens = ", ".join(f"{k} {v:,}" for k, v in sorted(stats["tokens"].items())) or "n/a"
         lines.append(f"  {model}: {stats['calls']} call(s), {stats['errors']} error(s), "
                      f"mean latency {latency}, tokens: {tokens}")
+        if stats.get("schema_calls"):
+            schema_ms = stats.get("mean_schema_ms")
+            schema_s = f"{schema_ms / 1000:.1f} s" if schema_ms is not None else "n/a"
+            lines.append(f"    + {stats['schema_calls']} schema-enrichment call(s), "
+                         f"mean inspect+schema time per case {schema_s} (tokens not counted)")
 
     lines.append("")
     best = result.recommend(target_precision)

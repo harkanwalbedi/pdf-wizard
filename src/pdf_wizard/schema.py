@@ -21,7 +21,7 @@ from typing import Any, Literal
 from pydantic import ValidationError
 
 from .config import MB, Settings, legacy_heuristics_enabled
-from .errors import InvalidInputError
+from .errors import InvalidInputError, MappingError
 from .models import (
     FieldType,
     FormField,
@@ -115,8 +115,13 @@ def detect_schema(
     mapper: Any | None = None,
     enrich: bool | Literal["auto"] = False,
     use_cache: bool = True,
+    strict: bool = False,
 ) -> FormSchema:
-    """Detects and optionally visually enriches the schema of a blank PDF form."""
+    """Detects and optionally visually enriches the schema of a blank PDF form.
+
+    If enrichment fails, the basic (deterministic) schema is returned with a
+    warning, unless `strict` is set, in which case the error is raised.
+    """
     loaded = (
         open_form(form_or_bytes, limits=settings.limits)
         if isinstance(form_or_bytes, (bytes, bytearray, memoryview))
@@ -132,12 +137,24 @@ def detect_schema(
     schema = build_schema(info)
     should_enrich = want_enrich or (enrich == "auto" and needs_visual_enrichment(schema))
     if should_enrich and _can_enrich(mapper):
-        enrichment, model_name = mapper.enrich_schema(schema, loaded.plain_pdf())
+        try:
+            enrichment, model_name = mapper.enrich_schema(schema, loaded.plain_pdf())
+        except MappingError as exc:
+            if strict:
+                raise
+            log.warning("schema enrichment failed; using the basic schema: error=%s", type(exc).__name__)
+            fallback = schema.model_copy(
+                update={"warnings": [*schema.warnings, ENRICHMENT_FAILED_WARNING]}
+            )
+            return fallback  # not cached, so a later call can retry enrichment
         schema = merge_enrichment(schema, enrichment, model=model_name)
 
     if use_cache:
         schema_cache.put(schema)
     return schema
+
+
+ENRICHMENT_FAILED_WARNING = "AI schema enrichment failed, so basic field labels were used."
 
 
 def _can_enrich(mapper: Any | None) -> bool:
@@ -325,6 +342,11 @@ def _disambiguate_duplicate_labels(fields: list[FormField]) -> None:
 
     # Second pass: if writable fields of the same type on the same page still share an identical label,
     # number them (#1), (#2), ... so every field is uniquely addressable.
+    _number_duplicate_labels(fields)
+
+
+def _number_duplicate_labels(fields: list[FormField]) -> None:
+    """Appends (#1), (#2), ... to writable non-comb fields sharing a (page, type, label)."""
     still_dup: dict[tuple[int | None, FieldType, str], list[int]] = defaultdict(list)
     for idx, f in enumerate(fields):
         if f.writable and f.label and not f.comb:
@@ -448,19 +470,31 @@ def _ends_with_word(label: str | None, word: str) -> bool:
     return cleaned == word or cleaned.endswith(f" {word}") or cleaned.endswith(f"?{word}")
 
 
+_FIELD_ID_ONLY_RE = re.compile(r"^F\d+$", re.I)
+
+
 def merge_enrichment(
     schema: FormSchema,
     response: SchemaEnrichmentResponse,
     *,
     model: str | None = None,
 ) -> FormSchema:
-    """Merges model-proposed schema enrichments while keeping physical PDF properties immutable."""
+    """Merges model-proposed schema enrichments while keeping physical PDF properties immutable.
+
+    Trust rules (the blank form's text is untrusted, so the model's answer is too):
+    - office_use_only: accepted when the model sets it (it can only block filling); never cleared.
+    - label/section: accepted when non-empty after cleaning and not just a field id. Labels that
+      collide on a page fall back to the deterministic label, then get (#1), (#2) numbering.
+    - checkbox groups: model groups are kept only when every member is a writable checkbox,
+      all members are on the same page, there are at least 2, and no field is in two groups.
+      Deterministic groups are kept first. Dropped groups are reported in `warnings`.
+    """
     by_id: dict[str, SchemaFieldEnrichment] = {item.field_id.strip(): item for item in response.fields}
+    by_field: dict[str, FormField] = {f.id: f for f in schema.fields}
     updated_fields: list[FormField] = []
-    proposed_groups: dict[str, list[str]] = defaultdict(list)
-    for gid, fids in schema.mutex_groups.items():
-        for fid in fids:
-            proposed_groups[gid].append(fid)
+    model_groups: dict[str, list[str]] = defaultdict(list)
+    relabelled: set[str] = set()
+    warnings = list(schema.warnings)
 
     for f in schema.fields:
         item = by_id.get(f.id)
@@ -468,32 +502,72 @@ def merge_enrichment(
             updated_fields.append(f)
             continue
         updates: dict[str, Any] = {}
-        if item.label and (cleaned := _clean_label(item.label)):
+        cleaned = _clean_label(item.label) if item.label else None
+        if cleaned and len(cleaned) >= 2 and not _FIELD_ID_ONLY_RE.match(cleaned):
             updates["label"] = cleaned
+            relabelled.add(f.id)
         if item.section and (sec := _clean_label(item.section)):
             updates["section"] = sec
         if not f.format_hint and item.format_hint and _VALID_FORMAT_HINT.match(item.format_hint.strip()):
             updates["format_hint"] = item.format_hint.strip()
         combined_text = f"{updates.get('label', f.label) or ''} {updates.get('section', f.section) or ''}"
-        if (item.office_use_only or _OFFICE_USE_RE.search(combined_text)) and _OFFICE_USE_RE.search(combined_text):
+        if item.office_use_only or _OFFICE_USE_RE.search(combined_text):
             updates["office_use_only"] = True
-        if f.type is FieldType.CHECKBOX and f.writable and item.mutex_group:
+        if item.mutex_group:
             gname = re.sub(r"[^A-Za-z0-9_-]", "", item.mutex_group.strip())[:24]
-            if gname and f.id not in proposed_groups[gname]:
-                proposed_groups[gname].append(f.id)
+            if gname and f.id not in model_groups[gname]:
+                model_groups[gname].append(f.id)
         updated_fields.append(f.model_copy(update=updates) if updates else f)
 
-    # Keep only mutex groups with at least 2 writable checkboxes, normalized to G1, G2, ...
+    # Labels must stay unique per (page, type): revert colliding model labels, then number leftovers.
+    seen: dict[tuple[int | None, FieldType, str], list[int]] = defaultdict(list)
+    for idx, f in enumerate(updated_fields):
+        if f.writable and f.label:
+            seen[(f.page, f.type, f.label.lower())].append(idx)
+    for indices in seen.values():
+        if len(indices) < 2:
+            continue
+        for idx in indices:
+            f = updated_fields[idx]
+            if f.id in relabelled:
+                updated_fields[idx] = f.model_copy(update={"label": by_field[f.id].label})
+    _number_duplicate_labels(updated_fields)
+
+    # Checkbox groups: deterministic first, then validated model groups, renumbered G1, G2, ...
+    field_by_id = {f.id: f for f in updated_fields}
     checkbox_ids = {f.id for f in updated_fields if f.writable and f.type is FieldType.CHECKBOX}
     final_groups: dict[str, list[str]] = {}
     assigned: dict[str, str] = {}
-    for raw_fids in proposed_groups.values():
-        valid = [fid for fid in dict.fromkeys(raw_fids) if fid in checkbox_ids and fid not in assigned]
+
+    def _add_group(fids: list[str]) -> None:
+        gid = f"G{len(final_groups) + 1}"
+        final_groups[gid] = fids
+        for fid in fids:
+            assigned[fid] = gid
+
+    for fids in schema.mutex_groups.values():
+        valid = [fid for fid in dict.fromkeys(fids) if fid in checkbox_ids and fid not in assigned]
         if len(valid) >= 2:
-            gid = f"G{len(final_groups) + 1}"
-            final_groups[gid] = valid
-            for fid in valid:
-                assigned[fid] = gid
+            _add_group(valid)
+
+    for gname, raw_fids in model_groups.items():
+        fids = list(dict.fromkeys(raw_fids))
+        new = [fid for fid in fids if fid not in assigned]
+        if not new:
+            continue  # the model only restated an existing deterministic group
+        problem: str | None = None
+        if any(fid not in checkbox_ids for fid in fids):
+            problem = "it includes fields that are not checkboxes"
+        elif len({field_by_id[fid].page for fid in fids}) > 1:
+            problem = "its checkboxes are on different pages"
+        elif len(new) != len(fids):
+            problem = "it overlaps another group"
+        elif len(fids) < 2:
+            problem = "it has fewer than 2 checkboxes"
+        if problem:
+            warnings.append(f"Ignored an AI-suggested checkbox group ({gname[:24]}): {problem}.")
+            continue
+        _add_group(fids)
 
     for idx, f in enumerate(updated_fields):
         updated_fields[idx] = f.model_copy(update={"group": assigned.get(f.id)})
@@ -504,6 +578,7 @@ def merge_enrichment(
             "model": model or schema.model,
             "fields": updated_fields,
             "mutex_groups": final_groups,
+            "warnings": warnings,
         }
     )
 
