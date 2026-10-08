@@ -1,0 +1,20 @@
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+# Outputs and reports often contain personal data; keep them out of version control.
+*.filled.pdf
+*_filled.pdf
+filled_*.pdf
+*.report.json
+*_report.json
+report.json
+out/
+reports/
+evals/results/

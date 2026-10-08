@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head fade-in">
+  <div>
+    <h1>Fill a PDF form</h1>
+    <p class="lead">Add the form and the files that hold your information. PDF Wizard fills in what it can find and shows where every value came from.</p>
+  </div>
+</div>
+<div class="layout-split">
+  <section class="card fade-in" aria-labelledby="upload-heading">
+    <h2 class="sr-only" id="upload-heading">New fill job</h2>
+    {% if error %}
+    <div class="alert alert-danger" role="alert" id="upload-error">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+      <div class="alert-body">{{ error }}</div>
+    </div>
+    {% endif %}
+    <form method="post" action="/jobs" enctype="multipart/form-data" id="upload-form" data-submit-once="true">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <ol class="steps">
+        <li class="step">
+          <div class="step-body">
+            <div class="step-head">
+              <h3>Form to fill</h3>
+              <p>A fillable PDF form, up to {{ limits.file_size }}.</p>
+            </div>
+            <div class="dropzone">
+              <label class="dropzone-title" for="form-input">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h5"/></svg>
+                <span>Target form <span class="optional">(PDF, required)</span></span>
+              </label>
+              <input type="file" name="form" id="form-input" accept=".pdf,application/pdf" required data-file-list="form-files" data-max-bytes="{{ limits.max_file_bytes }}">
+              <ul class="file-list" id="form-files"></ul>
+            </div>
+          </div>
+        </li>
+        <li class="step">
+          <div class="step-body">
+            <div class="step-head">
+              <h3>Your information</h3>
+              <p>Add at least one of these. Up to {{ limits.max_source_files }} files, {{ limits.total_size }} in total with the form.</p>
+            </div>
+            <div class="source-grid">
+              <div class="dropzone">
+                <label class="dropzone-title" for="data-input">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M3 15h18"/><path d="M10 4v16"/></svg>
+                  <span>Data file <span class="optional">(JSON or CSV)</span></span>
+                </label>
+                <input type="file" name="data" id="data-input" accept=".json,.csv,application/json,text/csv" multiple data-file-list="data-files" data-max-bytes="{{ limits.max_file_bytes }}">
+                <ul class="file-list" id="data-files"></ul>
+                <div class="field">
+                  <label for="row-input">CSV row <span class="optional">(optional)</span></label>
+                  <input type="number" name="row" id="row-input" min="1" max="100000" step="1" inputmode="numeric" aria-describedby="row-hint">
+                  <p class="hint" id="row-hint">Which record to use if the file has several. 1 is the first.</p>
+                </div>
+              </div>
+              <div class="dropzone">
+                <label class="dropzone-title" for="docs-input">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 2H9a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2V7z"/><path d="M15 2v5h5"/><path d="M4 7v13a2 2 0 0 0 2 2h9"/></svg>
+                  <span>Documents <span class="optional">(PDF, PNG, JPEG, text, email)</span></span>
+                </label>
+                <input type="file" name="docs" id="docs-input" accept=".pdf,.png,.jpg,.jpeg,.txt,.eml,application/pdf,image/png,image/jpeg,text/plain,message/rfc822" multiple data-file-list="docs-files" data-max-bytes="{{ limits.max_file_bytes }}">
+                <p class="hint">Letters, statements, IDs, scans, or saved emails.</p>
+                <ul class="file-list" id="docs-files"></ul>
+              </div>
+              <div class="dropzone">
+                <label class="dropzone-title" for="references-input">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg>
+                  <span>Previously filled forms <span class="optional">(PDF)</span></span>
+                </label>
+                <input type="file" name="references" id="references-input" accept=".pdf,application/pdf" multiple data-file-list="references-files" data-max-bytes="{{ limits.max_file_bytes }}">
+                <p class="hint">Forms you filled in before for the same person.</p>
+                <ul class="file-list" id="references-files"></ul>
+              </div>
+              <div class="field">
+                <label for="notes-input">Note <span class="optional">(optional)</span></label>
+                <textarea name="notes" id="notes-input" rows="5" maxlength="{{ limits.max_note_chars }}" data-counter="notes-counter" aria-describedby="notes-hint"></textarea>
+                <div class="note-foot">
+                  <p class="hint" id="notes-hint">Facts or instructions, for example “Use my work address.”</p>
+                  <span class="counter" id="notes-counter"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </li>
+        <li class="step">
+          <div class="step-body">
+            <div class="step-head">
+              <h3>Options</h3>
+            </div>
+            <label class="check" for="flatten-input">
+              <input type="checkbox" name="flatten" id="flatten-input" value="1">
+              <span class="check-text">
+                <strong>Flatten the filled PDF</strong>
+                <span class="hint">Turns the fields into plain text that can't be edited. Leave this off if you want to review and change values later.</span>
+              </span>
+            </label>
+          </div>
+        </li>
+      </ol>
+      <div class="form-footer">
+        <p class="hint">Every value is checked against your files before it's written. Values that fail a check are left blank.</p>
+        <button class="btn btn-primary" type="submit" id="submit-button" data-busy-label="Uploading…">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 20 14 10"/><path d="M18 2v3"/><path d="M18 8v3"/><path d="M14 6.5h2.5"/><path d="M19.5 6.5H22"/></svg>
+          Fill form
+        </button>
+      </div>
+    </form>
+  </section>
+  <aside class="sidebar">
+    <section class="card fade-in" aria-labelledby="jobs-heading">
+      <div class="card-header">
+        <h2 id="jobs-heading">Recent jobs</h2>
+        <span class="count">{{ jobs|length }} of {{ max_jobs }}</span>
+      </div>
+      {% if jobs %}
+      <ul class="job-list" id="job-list">
+        {% for job in jobs %}
+        <li class="job-item">
+          <a class="job-link" href="/jobs/{{ job.id }}" id="job-link-{{ job.id }}">
+            <span class="job-name" title="{{ job.form_name }}">{{ job.form_name }}</span>
+            <span class="job-meta">{{ job.age }} · deleted in {{ job.expires_in }}</span>
+          </a>
+          <span class="badge badge-{{ job.status }}">{{ job.status_label }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="empty" id="jobs-empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 13h5l2 3h4l2-3h5"/><path d="M6 4h12l3 9v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-6z"/></svg>
+        <p>No jobs yet. Filled forms show up here for an hour.</p>
+      </div>
+      {% endif %}
+    </section>
+    <section class="card fade-in" aria-labelledby="how-heading">
+      <div class="card-header">
+        <h2 id="how-heading">How it works</h2>
+      </div>
+      <ol class="how-list">
+        <li><span><strong>Reads your files.</strong> Text, tables, scans, and earlier forms are prepared for Gemini.</span></li>
+        <li><span><strong>Proposes values.</strong> Gemini suggests a value for each field it can, quoting your files as evidence.</span></li>
+        <li><span><strong>Checks every value.</strong> PDF Wizard verifies the evidence and the format before anything is written.</span></li>
+      </ol>
+    </section>
+  </aside>
+</div>
+{% endblock %}

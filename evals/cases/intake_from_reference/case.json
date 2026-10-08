@@ -1,0 +1,10 @@
+{
+  "description": "A previously filled intake form from another clinic is the only source. Names, layout, and date formats differ; the address and emergency contact must be split. Sex is not in the source and must not be guessed from the name.",
+  "today": "2026-10-06",
+  "sources": [
+    {
+      "role": "reference",
+      "file": "sources/riverside_intake_2025.pdf"
+    }
+  ]
+}

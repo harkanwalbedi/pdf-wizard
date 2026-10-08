@@ -1,0 +1,10 @@
+{
+  "description": "Official IRS Form W-9 filled from a scanned PDF document (image-only PDF with no text layer).",
+  "today": "2026-10-07",
+  "sources": [
+    {
+      "role": "doc",
+      "file": "sources/w9_contractor_scan.pdf"
+    }
+  ]
+}

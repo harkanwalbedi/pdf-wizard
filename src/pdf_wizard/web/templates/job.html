@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+{% block head %}
+  {% if job.active %}
+  <noscript><meta http-equiv="refresh" content="5"></noscript>
+  {% endif %}
+{% endblock %}
+{% block content %}
+<a class="back-link" href="/" id="back-link">
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+  All jobs
+</a>
+<div class="page-head fade-in">
+  <div>
+    <div class="title-row">
+      <h1>{{ job.form_name }}</h1>
+      <span class="badge badge-{{ job.status }}" id="job-badge">{{ job.status_label }}</span>
+    </div>
+    <p class="meta-line">Started {{ job.age }} · deleted automatically in {{ job.expires_in }}</p>
+  </div>
+  <div class="actions">
+    {% if job.status == "done" %}
+    <a class="btn btn-primary" href="/jobs/{{ job.id }}/download" id="download-button" download>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
+      Download filled PDF
+    </a>
+    {% endif %}
+    <form class="inline-form" method="post" action="/jobs/{{ job.id }}/delete" id="delete-form" data-submit-once="true">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button class="btn btn-danger" type="submit" id="delete-button" data-busy-label="Deleting…">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>
+        Delete job
+      </button>
+    </form>
+  </div>
+</div>
+
+{% if job.active %}
+<section class="card progress-card fade-in" id="job-progress" aria-labelledby="progress-heading"
+  data-status-url="/jobs/{{ job.id }}/status"
+  data-label-queued="{{ status_texts['queued'] }}"
+  data-label-running="{{ status_texts['running'] }}"
+  data-timeout-text="This is taking longer than usual. Reload the page to check again.">
+  <div class="spinner" aria-hidden="true"></div>
+  <div class="stack">
+    <h2 id="progress-heading">Filling your form</h2>
+    <p class="status-text" id="job-status-text" role="status">{{ status_text }}</p>
+    <p class="hint">This usually takes under a minute. You can leave this page; the job keeps running.</p>
+  </div>
+</section>
+{% endif %}
+
+{% if job.status == "failed" %}
+<section class="card failure-card fade-in" aria-labelledby="failure-heading">
+  <div class="alert alert-danger" role="alert" id="job-error">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+    <div class="alert-body">
+      <strong id="failure-heading">This form couldn't be filled</strong>
+      <span>{{ job.error or "Something went wrong while filling the form." }}</span>
+    </div>
+  </div>
+  <div class="actions">
+    <a class="btn btn-primary" href="/" id="try-again-link">Try again</a>
+  </div>
+</section>
+{% endif %}
+
+{% if results %}
+<section class="section fade-in" aria-labelledby="summary-heading">
+  <h2 class="sr-only" id="summary-heading">Summary</h2>
+  <div class="stats">
+    {% for stat in results.stats %}
+    <div class="card stat stat-{{ stat.key }}" id="stat-{{ stat.key }}">
+      <span class="stat-label">{{ stat.label }}</span>
+      <span class="stat-value">{{ stat.count }}</span>
+      <span class="stat-hint">{{ stat.hint }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+{% if results.warnings %}
+<div class="alert alert-warning section" role="note" id="job-warnings">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+  <div class="alert-body">
+    <strong>Check these warnings</strong>
+    <ul>
+      {% for warning in results.warnings %}
+      <li>{{ warning }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endif %}
+
+<section class="card card-flush section fade-in" aria-labelledby="results-heading">
+  <div class="table-tools">
+    <div class="stack">
+      <h2 id="results-heading">Fields</h2>
+      <p class="masked-note">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+        <span>Sensitive values and their evidence are masked here. The downloaded PDF has the full values.</span>
+      </p>
+    </div>
+    <div class="chips" role="group" aria-label="Show fields by status" data-filter-bar="true" data-filter-target="results-table" data-filter-empty="filter-empty" hidden>
+      <button class="chip" type="button" data-filter="all" aria-pressed="true" id="filter-all">All <span class="chip-count">{{ results.rows|length }}</span></button>
+      {% for stat in results.stats %}
+      {% if stat.count %}
+      <button class="chip" type="button" data-filter="{{ stat.key }}" aria-pressed="false" id="filter-{{ stat.key }}">{{ stat.label }} <span class="chip-count">{{ stat.count }}</span></button>
+      {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table class="results" id="results-table">
+      <thead>
+        <tr>
+          <th scope="col">Field</th>
+          <th scope="col">Page</th>
+          <th scope="col">Status</th>
+          <th scope="col">Value</th>
+          <th scope="col">Source</th>
+          <th scope="col">Evidence</th>
+          <th scope="col">Confidence</th>
+          <th scope="col">Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in results.rows %}
+        <tr data-status="{{ row.status }}">
+          <td data-label="Field">
+            <span class="field-label">{{ row.label }}</span>
+            {% if row.show_name %}<span class="field-name">{{ row.name }}</span>{% endif %}
+          </td>
+          <td data-label="Page">
+            {% if row.page %}{{ row.page }}{% else %}<span class="cell-empty">—</span>{% endif %}
+          </td>
+          <td data-label="Status"><span class="badge badge-{{ row.status }}">{{ row.status_label }}</span></td>
+          <td data-label="Value">
+            {% if row.value %}
+              {% if row.value_long %}
+              <details class="more value"><summary>{{ row.value_short }}</summary><p>{{ row.value }}</p></details>
+              {% else %}
+              <span class="value">{{ row.value }}</span>
+              {% endif %}
+            {% else %}
+            <span class="cell-empty">—</span>
+            {% endif %}
+          </td>
+          <td data-label="Source">
+            {% if row.source_id %}
+            <span class="source-id">{{ row.source_id }}</span>
+            {% if row.source_name %}<span class="source-name" title="{{ row.source_name }}">{{ row.source_name }}</span>{% endif %}
+            {% else %}
+            <span class="cell-empty">—</span>
+            {% endif %}
+          </td>
+          <td data-label="Evidence">
+            {% if row.evidence %}
+              {% if row.evidence_long %}
+              <details class="more evidence"><summary>{{ row.evidence_short }}</summary><p>{{ row.evidence }}</p></details>
+              {% else %}
+              <span class="evidence">{{ row.evidence }}</span>
+              {% endif %}
+            {% else %}
+            <span class="cell-empty">—</span>
+            {% endif %}
+          </td>
+          <td data-label="Confidence">
+            {% if row.confidence is not none %}
+            <span class="confidence">
+              <meter min="0" max="1" low="0.5" high="0.8" optimum="1" value="{{ row.confidence }}" aria-label="Confidence {{ row.confidence_pct }}">{{ row.confidence_pct }}</meter>
+              <span>{{ row.confidence_pct }}</span>
+            </span>
+            {% else %}
+            <span class="cell-empty">—</span>
+            {% endif %}
+          </td>
+          <td data-label="Details">
+            {% if row.reason or row.detail or row.notes %}
+            <div class="detail">
+              {% if row.reason %}<strong>{{ row.reason }}</strong>{% endif %}
+              {% if row.detail %}<span>{{ row.detail }}</span>{% endif %}
+              {% if row.notes %}
+              <ul>
+                {% for note in row.notes %}
+                <li>{{ note }}</li>
+                {% endfor %}
+              </ul>
+              {% endif %}
+            </div>
+            {% else %}
+            <span class="cell-empty">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if not results.rows %}
+    <p class="filter-empty" id="no-fields">This form has no fields.</p>
+    {% endif %}
+    <p class="filter-empty" id="filter-empty" hidden>No fields with this status.</p>
+  </div>
+</section>
+
+<div class="info-grid section">
+  <section class="card fade-in" aria-labelledby="sources-heading">
+    <div class="card-header">
+      <h2 id="sources-heading">Sources</h2>
+    </div>
+    {% if results.sources %}
+    <ul class="source-list" id="source-list">
+      {% for source in results.sources %}
+      <li>
+        <span class="source-id">{{ source.id }}</span>
+        <span><span class="name">{{ source.name }}</span><span class="kind">{{ source.kind }}</span></span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="subtle">No sources were read.</p>
+    {% endif %}
+  </section>
+  <section class="card fade-in" aria-labelledby="run-heading">
+    <div class="card-header">
+      <h2 id="run-heading">About this run</h2>
+    </div>
+    <dl class="meta-list">
+      {% for label, value in results.meta %}
+      <dt>{{ label }}</dt>
+      <dd>{{ value }}</dd>
+      {% endfor %}
+    </dl>
+  </section>
+</div>
+{% endif %}
+{% endblock %}

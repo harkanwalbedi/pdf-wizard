@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <title>PDF Wizard</title>
+  <defs>
+    <linearGradient id="pw-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6c5cf2"/>
+      <stop offset="1" stop-color="#33239a"/>
+    </linearGradient>
+    <radialGradient id="pw-shine" cx="0.25" cy="0.15" r="0.75">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="url(#pw-bg)"/>
+  <rect width="64" height="64" rx="16" fill="url(#pw-shine)"/>
+  <!-- wand -->
+  <line x1="16.5" y1="47.5" x2="37" y2="27" stroke="#ffffff" stroke-width="6" stroke-linecap="round"/>
+  <line x1="33" y1="31" x2="37" y2="27" stroke="#ffd27a" stroke-width="6" stroke-linecap="round"/>
+  <!-- sparkles -->
+  <path d="M45 9.5 Q46.7 17.3 54.5 19 Q46.7 20.7 45 28.5 Q43.3 20.7 35.5 19 Q43.3 17.3 45 9.5 Z" fill="#ffffff"/>
+  <path d="M52.5 31.5 Q53.3 35.2 57 36 Q53.3 36.8 52.5 40.5 Q51.7 36.8 48 36 Q51.7 35.2 52.5 31.5 Z" fill="#ffd27a"/>
+  <circle cx="28.5" cy="15.5" r="2" fill="#ffffff" fill-opacity="0.85"/>
+</svg>

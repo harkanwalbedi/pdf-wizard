@@ -1,0 +1,10 @@
+{
+  "description": "Official IRS Form 8822 (Change of Address) filled from a JPEG scan of a client move notice.",
+  "today": "2026-10-07",
+  "sources": [
+    {
+      "role": "doc",
+      "file": "sources/f8822_move_notice.jpg"
+    }
+  ]
+}

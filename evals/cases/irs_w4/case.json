@@ -1,0 +1,14 @@
+{
+  "description": "Official IRS Form W-4 filled from unstructured employee text notes plus an HR employer verification PDF memo.",
+  "today": "2026-10-07",
+  "sources": [
+    {
+      "role": "doc",
+      "file": "sources/w4_employee.txt"
+    },
+    {
+      "role": "doc",
+      "file": "sources/w4_employer_memo.pdf"
+    }
+  ]
+}

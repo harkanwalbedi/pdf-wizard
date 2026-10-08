@@ -1,0 +1,14 @@
+{
+  "description": "Structured JSON record plus a typed note. Covers dates, a comb SSN, a combo box with a placeholder, radio buttons, today's date, and sensitive fields with no data.",
+  "today": "2026-10-06",
+  "sources": [
+    {
+      "role": "data",
+      "file": "sources/applicant.json"
+    },
+    {
+      "role": "note",
+      "text": "My middle initial is R. A friend who works at ACME told me about this opening."
+    }
+  ]
+}

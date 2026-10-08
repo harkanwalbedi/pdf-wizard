@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="auth fade-in" aria-labelledby="login-heading">
+  <div class="card auth-card">
+    <img class="auth-logo" src="/static/logo.svg" alt="" width="56" height="56">
+    <div class="stack">
+      <h1 id="login-heading">Sign in to PDF Wizard</h1>
+      <p class="lead">Paste the sign-in token that PDF Wizard printed in the terminal where you started it.</p>
+    </div>
+    {% if error %}
+    <div class="alert alert-danger" role="alert" id="login-error">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+      <div class="alert-body">{{ error }}</div>
+    </div>
+    {% endif %}
+    <form class="stack" method="post" action="/login" id="login-form" data-submit-once="true">
+      <input type="hidden" name="csrf_token" value="{{ login_csrf }}">
+      <div class="field">
+        <label for="token-input">Sign-in token</label>
+        <input type="password" name="token" id="token-input" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="512" required autofocus aria-describedby="token-hint">
+        <p class="hint" id="token-hint">It's on the line that starts with “Sign-in token”. It stays valid until the server stops.</p>
+      </div>
+      <button class="btn btn-primary btn-block" type="submit" id="login-submit" data-busy-label="Signing in…">Sign in</button>
+    </form>
+  </div>
+  <p class="auth-note">PDF Wizard runs on this computer. To fill a form, it sends the form's fields and the files you add to Gemini.</p>
+</section>
+{% endblock %}

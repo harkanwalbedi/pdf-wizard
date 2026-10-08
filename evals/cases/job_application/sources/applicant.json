@@ -1,0 +1,41 @@
+{
+  "applicant": {
+    "name": {
+      "first": "Maria",
+      "last": "Gonzalez"
+    },
+    "birth_date": "1988-04-23",
+    "ssn": "987-65-4320",
+    "contact": {
+      "email": "maria.gonzalez@example.com",
+      "phone": "(512) 555-0147"
+    },
+    "address": {
+      "street": "4821 Oak Hollow Dr",
+      "city": "Austin",
+      "state": "TX",
+      "zip": "78745"
+    }
+  },
+  "job": {
+    "position": "Warehouse Supervisor",
+    "available_from": "2026-11-02",
+    "desired_salary_usd": 58000,
+    "full_time": true,
+    "willing_to_relocate": false
+  },
+  "history": [
+    {
+      "employer": "Lone Star Logistics",
+      "title": "Shift Lead",
+      "from": "2021-03",
+      "to": "present"
+    },
+    {
+      "employer": "Hill Country Grocers",
+      "title": "Stocker",
+      "from": "2017-06",
+      "to": "2021-02"
+    }
+  ]
+}

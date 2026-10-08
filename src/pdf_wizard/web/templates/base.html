@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="{{ description }}">
+  <meta name="color-scheme" content="light dark">
+  <meta name="referrer" content="same-origin">{# matches the header: the app's own posts must keep their Origin #}
+  <meta name="robots" content="noindex, nofollow">
+  <title>{{ page_title }} · PDF Wizard</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/app.js" defer></script>
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <a class="skip-link" href="#main" id="skip-link">Skip to content</a>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="/" id="brand-link">
+        <img src="/static/logo.svg" alt="" width="34" height="34">
+        <span>PDF Wizard</span>
+      </a>
+      {% if csrf_token %}
+      <form class="inline-form" method="post" action="/logout" id="logout-form" data-submit-once="true">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="btn btn-ghost btn-sm" type="submit" id="logout-button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+          Sign out
+        </button>
+      </form>
+      {% endif %}
+    </div>
+  </header>
+  <main class="container" id="main">
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="site-footer">
+    <div class="container">
+      PDF Wizard {{ version }} runs on this computer. Jobs are kept in memory only and deleted after an hour, when your session ends, or when the server stops.
+    </div>
+  </footer>
+</body>
+</html>

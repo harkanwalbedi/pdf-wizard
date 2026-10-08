@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="auth fade-in" aria-labelledby="error-heading">
+  <div class="card auth-card">
+    <img class="auth-logo" src="/static/logo.svg" alt="" width="56" height="56">
+    <div class="stack">
+      <p class="error-code">Error {{ code }}</p>
+      <h1 id="error-heading">{{ title }}</h1>
+      <p class="lead">{{ message }}</p>
+    </div>
+    <div class="actions">
+      <a class="btn btn-primary" href="{{ action_href }}" id="error-action">{{ action_label }}</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

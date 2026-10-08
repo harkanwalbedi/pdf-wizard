@@ -1,0 +1,42 @@
+{
+  "first_name": "Maria",
+  "middle_initial": "R",
+  "last_name": "Gonzalez",
+  "dob": "04/23/1988",
+  "ssn": "987654320",
+  "email": "maria.gonzalez@example.com",
+  "phone": [
+    "(512) 555-0147",
+    "512-555-0147",
+    "512.555.0147",
+    "5125550147",
+    "(512)555-0147"
+  ],
+  "street": [
+    "4821 Oak Hollow Dr",
+    "4821 Oak Hollow Drive",
+    "4821 Oak Hollow Dr."
+  ],
+  "city": "Austin",
+  "state": "TX",
+  "zip": "78745",
+  "position": "Warehouse Supervisor",
+  "start_date": "11/02/2026",
+  "salary": [
+    "58000",
+    "58,000",
+    "$58,000",
+    "$58000",
+    "58000.00",
+    "58,000.00",
+    "$58,000.00"
+  ],
+  "full_time": true,
+  "relocate": null,
+  "referral": "friend",
+  "prev_employer": "Lone Star Logistics",
+  "felony": null,
+  "emergency_name": null,
+  "emergency_phone": null,
+  "application_date": "10/06/2026"
+}

@@ -1,0 +1,10 @@
+{
+  "description": "W-9-style form with opaque field names, filled from an email. The quoted reply holds the requester's address, which must not be used. The SSN is split over three comb fields.",
+  "today": "2026-10-06",
+  "sources": [
+    {
+      "role": "doc",
+      "file": "sources/email_from_contractor.eml"
+    }
+  ]
+}

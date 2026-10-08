@@ -1,0 +1,10 @@
+{
+  "description": "Official IRS Form W-8BEN filled from a PNG image of a foreign beneficial owner declaration.",
+  "today": "2026-10-07",
+  "sources": [
+    {
+      "role": "doc",
+      "file": "sources/w8ben_beneficial_owner.png"
+    }
+  ]
+}
