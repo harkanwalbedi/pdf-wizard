@@ -74,6 +74,15 @@ flowchart TD
    - Rejects prompt-injection text and proposals below the confidence threshold.
 7. **Fill and Report:** Writes verified values with proper PDF appearances and outputs a JSON audit report with sensitive values (`SSN`, `EIN`, bank numbers, `DOB`) masked as `***-**-6789`.
 
+### Visual Walkthrough: Blank Overlay vs. Final Filled Form
+
+To see how this works in practice, compare the **Stage 1 Visual Overlay** (red coordinate boxes + `[F#]` badges generated for zero-PII Gemini Vision analysis) against the **Final Verified Filled Form** on **IRS Form 1040**:
+
+| Stage 1: Blank Visual Overlay with `[F#]` Badges | Stage 2: Final Ground-Truth Filled Form |
+|:---:|:---:|
+| ![IRS Form 1040 Overlay](docs/images/f1040_overlay.png) | ![IRS Form 1040 Filled](docs/images/f1040_filled.png) |
+| *Gemini Vision reads printed text surrounding red coordinate badges on the blank form with zero user PII.* | *The engine populates verified values (Name, SSN combs, filing status checkboxes) with strict guardrails.* |
+
 ---
 
 ## Installation
