@@ -317,10 +317,10 @@ See [`evals/README.md`](evals/README.md) for full details on scoring precision, 
 - Multi-select choice fields are filled with a single value.
 - Always review the filled PDF and report before submitting an official form.
 
-## Development & Forking
+## Development
 
 ```bash
-# Run the full offline test suite (920+ unit, security, schema, and end-to-end tests)
+# Run the full offline test suite (943 unit, security, schema, and end-to-end tests; no network)
 .venv/bin/pytest
 
 # Regenerate the synthetic eval cases in evals/cases/
@@ -329,6 +329,11 @@ See [`evals/README.md`](evals/README.md) for full details on scoring precision, 
 # Audit locked dependencies for known CVEs
 .venv/bin/pip-audit -r requirements-dev.lock --disable-pip --no-deps
 ```
+
+Extension points:
+- **New built-in synthetic template:** in `evals/dataset.py`, add the blank form to `TEMPLATES`, write a `_generate_<name>` function (see `_generate_irs_w9`), and add it to the dispatch in `_generate_sample`. For one-off forms, `--form your.pdf` needs no code.
+- **Different model backend:** implement the `Mapper` protocol in `src/pdf_wizard/mapping/base.py` (`propose()`, optionally `enrich_schema()` and `generate()`) and pass it as `mapper_factory`; `mapping/fake.py` is the offline reference implementation used by the tests.
+- **New source type:** add a normalizer under `src/pdf_wizard/sources/` that returns the shared `Source` model; guardrails and evidence checks work unchanged.
 
 ### Project layout
 
