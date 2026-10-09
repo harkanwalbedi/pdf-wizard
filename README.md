@@ -102,26 +102,21 @@ To see how this works in practice, compare the **Stage 1 Visual Overlay** (red c
 
 Requires **Python 3.12+**. For AI-powered form filling (`pdf-wizard fill`), also configure a Google Cloud project with Vertex AI enabled (or a paid-tier `GEMINI_API_KEY`), as described [below](#connect-to-vertex-ai-one-time-setup).
 
-**With [uv](https://docs.astral.sh/uv/) (faster):**
+**With [uv](https://docs.astral.sh/uv/) (recommended):**
 
 ```bash
-uv venv -p 3.12 .venv
-uv pip sync requirements-dev.lock      # exact pinned versions, removes anything extra
-uv pip install --no-deps -e .
+uv sync                # creates .venv from uv.lock and installs pdf-wizard + dev tools
 ```
 
 **With pip:**
 
 ```bash
 python3 -m venv .venv
-.venv/bin/pip install -r requirements-dev.lock
+.venv/bin/pip install --require-hashes -r requirements-dev.lock
 .venv/bin/pip install --no-deps -e .
 ```
 
-Both use the same lockfile and produce the same `.venv`, so every `.venv/bin/...` command below works either way.
-
-> [!NOTE]
-> If `uv pip sync` reports `there is no version of <pkg>==<x>`, your package mirror is probably holding back recently published versions (some corporate mirrors add a delay before new releases appear). Use the pip commands, or point uv at another index with `--default-index`.
+Both produce the same `.venv`, so every `.venv/bin/...` command below works either way (or prefix with `uv run`).
 
 ### Connect to Vertex AI (one-time setup)
 
@@ -367,8 +362,13 @@ See [`evals/README.md`](evals/README.md) for full details on scoring precision, 
 # Regenerate the synthetic eval cases in evals/cases/
 .venv/bin/python -m evals.make_cases
 
-# Audit locked dependencies for known CVEs
-.venv/bin/pip-audit -r requirements-dev.lock --disable-pip --no-deps
+# Audit hash-pinned dependencies for known CVEs
+.venv/bin/pip-audit -r requirements-dev.lock --disable-pip --require-hashes
+
+# Upgrade dependencies and re-export requirements*.lock (with hashes) for pip users
+uv lock --upgrade && uv sync
+uv export --no-emit-project --no-dev -o requirements.lock
+uv export --no-emit-project -o requirements-dev.lock
 ```
 
 Extension points:

@@ -9,7 +9,7 @@ description = "PDF Wizard fills fillable (AcroForm) PDFs from your documents, wi
 readme = "README.md"
 license = {file = "LICENSE"}
 requires-python = ">=3.12"
-# Compatible ranges here; exact versions are pinned in requirements.lock.
+# Compatible ranges here; exact versions are locked in uv.lock (and exported to requirements*.lock).
 dependencies = [
     "pypdf>=6.19,<7",
     "cryptography>=50.0,<51",
@@ -20,6 +20,16 @@ dependencies = [
     "jinja2>=3.1.6,<4",
     "python-multipart>=0.0.32,<0.1",
     "itsdangerous>=2.2,<3",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1,<10",
+    "httpx>=0.28,<0.29",
+    "reportlab>=5.0,<6",
+    "pillow>=12.0,<13",
+    "faker>=40.0,<41",
+    "pip-audit>=2.10,<3",
 ]
 
 [project.optional-dependencies]
