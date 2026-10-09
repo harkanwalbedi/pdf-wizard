@@ -100,23 +100,13 @@ To see how this works in practice, compare the **Stage 1 Visual Overlay** (red c
 
 ## Installation
 
-Requires **Python 3.12+**. For AI-powered form filling (`pdf-wizard fill`), also configure a Google Cloud project with Vertex AI enabled (or a paid-tier `GEMINI_API_KEY`), as described [below](#connect-to-vertex-ai-one-time-setup).
-
-**With [uv](https://docs.astral.sh/uv/) (recommended):**
+Requires **Python 3.12+** and **[uv](https://docs.astral.sh/uv/)**. For AI-powered form filling (`pdf-wizard fill`), also configure a Google Cloud project with Vertex AI enabled (or a paid-tier `GEMINI_API_KEY`), as described [below](#connect-to-vertex-ai-one-time-setup).
 
 ```bash
 uv sync                # creates .venv from uv.lock and installs pdf-wizard + dev tools
 ```
 
-**With pip:**
-
-```bash
-python3 -m venv .venv
-.venv/bin/pip install --require-hashes -r requirements-dev.lock
-.venv/bin/pip install --no-deps -e .
-```
-
-Both produce the same `.venv`, so every `.venv/bin/...` command below works either way (or prefix with `uv run`).
+All commands below use `.venv/bin/...` (or you can prefix them with `uv run`).
 
 ### Connect to Vertex AI (one-time setup)
 
@@ -362,13 +352,11 @@ See [`evals/README.md`](evals/README.md) for full details on scoring precision, 
 # Regenerate the synthetic eval cases in evals/cases/
 .venv/bin/python -m evals.make_cases
 
-# Audit hash-pinned dependencies for known CVEs
-.venv/bin/pip-audit -r requirements-dev.lock --disable-pip --require-hashes
+# Audit hash-pinned dependencies in uv.lock for known CVEs
+uv export --no-emit-project | .venv/bin/pip-audit -r /dev/stdin --disable-pip --require-hashes
 
-# Upgrade dependencies and re-export requirements*.lock (with hashes) for pip users
+# Upgrade dependencies
 uv lock --upgrade && uv sync
-uv export --no-emit-project --no-dev -o requirements.lock
-uv export --no-emit-project -o requirements-dev.lock
 ```
 
 Extension points:

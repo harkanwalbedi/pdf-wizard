@@ -776,16 +776,6 @@ dependencies = [
     { name = "uvicorn" },
 ]
 
-[package.optional-dependencies]
-dev = [
-    { name = "faker" },
-    { name = "httpx" },
-    { name = "pillow" },
-    { name = "pip-audit" },
-    { name = "pytest" },
-    { name = "reportlab" },
-]
-
 [package.dev-dependencies]
 dev = [
     { name = "faker" },
@@ -799,22 +789,15 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "cryptography", specifier = ">=50.0,<51" },
-    { name = "faker", marker = "extra == 'dev'", specifier = ">=40.0,<41" },
     { name = "fastapi", specifier = ">=0.142,<0.143" },
     { name = "google-genai", specifier = ">=2.28,<3" },
-    { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.28,<0.29" },
     { name = "itsdangerous", specifier = ">=2.2,<3" },
     { name = "jinja2", specifier = ">=3.1.6,<4" },
-    { name = "pillow", marker = "extra == 'dev'", specifier = ">=12.0,<13" },
-    { name = "pip-audit", marker = "extra == 'dev'", specifier = ">=2.10,<3" },
     { name = "pydantic", specifier = ">=2.13,<3" },
     { name = "pypdf", specifier = ">=6.19,<7" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.1,<10" },
     { name = "python-multipart", specifier = ">=0.0.32,<0.1" },
-    { name = "reportlab", marker = "extra == 'dev'", specifier = ">=5.0,<6" },
     { name = "uvicorn", specifier = ">=0.54,<0.55" },
 ]
-provides-extras = ["dev"]
 
 [package.metadata.requires-dev]
 dev = [
