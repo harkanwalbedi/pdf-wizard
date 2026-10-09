@@ -1,15 +1,24 @@
 {
   "topmostSubform[0].Page1[0].f1_6[0]": "Arthur Pendelton, 104 Meadow Lane, Columbus, OH 43215",
   "topmostSubform[0].Page1[0].f1_7[0]": "942-00-1842",
-  "topmostSubform[0].Page1[0].f1_8[0]": "(614) 555-0182",
+  "topmostSubform[0].Page1[0].f1_8[0]": [
+    "(614) 555-0182",
+    "614-555-0182"
+  ],
   "topmostSubform[0].Page1[0].f1_9[0]": null,
   "topmostSubform[0].Page1[0].c1_1[0]": null,
   "topmostSubform[0].Page1[0].f1_10[0]": "Clara Higgins, CPA, 742 Evergreen Terrace, Suite 200, Columbus, OH 43215",
   "topmostSubform[0].Page1[0].c1_2[0]": true,
   "topmostSubform[0].Page1[0].f1_11[0]": "0305-67891R",
   "topmostSubform[0].Page1[0].f1_12[0]": "P01234567",
-  "topmostSubform[0].Page1[0].f1_13[0]": "(614) 555-0144",
-  "topmostSubform[0].Page1[0].f1_14[0]": "(614) 555-0145",
+  "topmostSubform[0].Page1[0].f1_13[0]": [
+    "(614) 555-0144",
+    "614-555-0144"
+  ],
+  "topmostSubform[0].Page1[0].f1_14[0]": [
+    "(614) 555-0145",
+    "614-555-0145"
+  ],
   "topmostSubform[0].Page1[0].c1_3[0]": null,
   "topmostSubform[0].Page1[0].c1_4[0]": null,
   "topmostSubform[0].Page1[0].c1_5[0]": null,

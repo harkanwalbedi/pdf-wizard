@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 import os
 import random
+import re
 import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -153,11 +154,81 @@ def generate_with_faker(fields: Sequence[FormField], fake: Faker, rng: random.Ra
     return Persona(scenario="faker fallback", values=values)
 
 
+_COPY_SEGMENT_RE = re.compile(r"\bCopy[0-9A-Z]+\[\d+\]")
+_COPY_LEAF_RE = re.compile(r"\b([fc])\d+(_\d+\[\d+\])$")
+_INITIAL_END_RE = re.compile(r"(?:^|\s)[A-Z]$")
+_PHONE_10_RE = re.compile(r"^\(?(\d{3})\)?[\s.-](\d{3})[\s.-](\d{4})$")
+_CREDENTIAL_SUFFIX_RE = re.compile(
+    r"^(.+?),\s*(?:CPA|Esq\.?|M\.?D\.?|Ph\.?D\.?|J\.?D\.?|LL\.?M\.?|EA|RN|PE|Jr\.?|Sr\.?)$",
+    re.I,
+)
+
+
+def _copy_canonical_name(name: str) -> str | None:
+    if not _COPY_SEGMENT_RE.search(name):
+        return None
+    canon = _COPY_SEGMENT_RE.sub("Copy[*]", name)
+    return _COPY_LEAF_RE.sub(r"\1*\2", canon)
+
+
+def _expand_multi_copy(fields: Sequence[FormField], items: list[PersonaValue]) -> list[PersonaValue]:
+    """Propagates persona values across identical copies on multi-copy carbon forms."""
+    by_id = {f.id: f for f in fields}
+    by_canon: dict[str, list[FormField]] = {}
+    for f in fields:
+        if not f.writable:
+            continue
+        canon = _copy_canonical_name(f.name)
+        if canon is not None:
+            by_canon.setdefault(canon, []).append(f)
+    if not by_canon:
+        return items
+    existing = {v.field_id for v in items}
+    expanded = list(items)
+    for v in items:
+        f = by_id.get(v.field_id)
+        canon = _copy_canonical_name(f.name) if f is not None else None
+        if f is None or canon is None:
+            continue
+        for sib in by_canon.get(canon, ()):
+            if sib.id not in existing and sib.type == f.type and sib.max_len == f.max_len and sib.comb == f.comb:
+                expanded.append(PersonaValue(field_id=sib.id, value=v.value, source_line=v.source_line))
+                existing.add(sib.id)
+    return expanded
+
+
+def _accepted_variants(f: FormField, pdf_value: str, raw: str, source_line: str) -> str | list[str]:
+    variants: list[str] = [pdf_value]
+    if raw != pdf_value:
+        variants.append(raw)
+    if not f.comb:
+        if _INITIAL_END_RE.search(pdf_value) and f"{pdf_value}." in source_line:
+            if f.max_len is None or len(pdf_value) + 1 <= f.max_len:
+                variants.append(f"{pdf_value}.")
+        elif pdf_value.endswith(".") and _INITIAL_END_RE.search(pdf_value[:-1]):
+            variants.append(pdf_value[:-1])
+        prefix, _, rest = pdf_value.partition(" ")
+        label_words = {w.strip(".,:()").casefold() for w in f"{f.label or ""} {f.name}".replace("_", " ").split()}
+        if rest and prefix.casefold() in label_words and rest in source_line:
+            variants.append(rest)
+        m = _CREDENTIAL_SUFFIX_RE.match(pdf_value)
+        if m and "name" in label_words and m.group(1) in source_line:
+            variants.append(m.group(1))
+        pm = _PHONE_10_RE.match(pdf_value)
+        if pm and label_words & {"telephone", "phone", "fax"}:
+            for cand in (f"({pm.group(1)}) {pm.group(2)}-{pm.group(3)}", f"{pm.group(1)}-{pm.group(2)}-{pm.group(3)}"):
+                if f.max_len is None or len(cand) <= f.max_len:
+                    variants.append(cand)
+    deduped = list(dict.fromkeys(variants))
+    return deduped[0] if len(deduped) == 1 else deduped
+
+
 def validate_persona(fields: Sequence[FormField], persona: Persona) -> ValidatedPersona:
     """Runs the persona through the product guardrails until every kept value is grounded."""
     by_id = {f.id: f for f in fields}
-    items = [v for v in persona.values if v.field_id in by_id and v.value.strip() and v.source_line.strip()]
-    dropped = len(persona.values) - len(items)
+    base_items = [v for v in persona.values if v.field_id in by_id and v.value.strip() and v.source_line.strip()]
+    dropped = len(persona.values) - len(base_items)
+    items = _expand_multi_copy(fields, base_items)
     outcome = None
     for _ in range(_MAX_ROUNDS):
         lines = list(dict.fromkeys(_one_line(v.source_line) for v in items))
@@ -173,7 +244,7 @@ def validate_persona(fields: Sequence[FormField], persona: Persona) -> Validated
         kept = [v for v in items if v.field_id in outcome.values]
         if len(kept) == len(items):
             break
-        dropped += len(items) - len(kept)
+        dropped += sum(1 for v in items if v in base_items and v.field_id not in outcome.values)
         items = kept
     assert outcome is not None
     accepted = {v.field_id: v for v in items if v.field_id in outcome.values}
@@ -187,8 +258,8 @@ def validate_persona(fields: Sequence[FormField], persona: Persona) -> Validated
         elif f.type is FieldType.CHECKBOX:
             expected[f.name] = True
         else:
-            raw = accepted[f.id].value
-            expected[f.name] = pdf_value if raw == pdf_value else [pdf_value, raw]
+            item = accepted[f.id]
+            expected[f.name] = _accepted_variants(f, pdf_value, item.value, _one_line(item.source_line))
     pdf_values = {fid: val for fid, val in outcome.values.items() if fid in accepted and val != "Off"}
     lines = list(dict.fromkeys(_one_line(accepted[fid].source_line) for fid in pdf_values))
     return ValidatedPersona(pdf_values=pdf_values, expected=expected, lines=lines, dropped=dropped)

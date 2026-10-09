@@ -1025,12 +1025,12 @@ def _prepare_personas(
     missing = [sid for sid in sample_ids if sid not in personas]
     use_gemini = generator == "gemini" and bool(missing)  # reused personas need no credentials
 
-    settings = Settings.from_env() if use_gemini else Settings()
+    settings = Settings.from_env()
     if use_gemini and mapper is None:
         mapper = create_mapper(settings)
     form = open_form(form_bytes, limits=settings.limits)
     # Validation only needs physical constraints; enriched labels help the generator write good personas.
-    schema = detect_schema(form, settings=settings, mapper=mapper, enrich="auto" if use_gemini else False)
+    schema = detect_schema(form, settings=settings, mapper=mapper, enrich="auto" if generator == "gemini" else False)
     fields = [f for f in apply_schema(form.info, schema).fields if f.writable]
     model: str | None = None
     if use_gemini:

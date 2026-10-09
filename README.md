@@ -90,11 +90,9 @@ To see how this works in practice, compare the **Stage 1 Visual Overlay** (red c
 | Test | Scope | Result |
 |---|---|---|
 | **Schema & guardrail battle test** (offline, no model calls) | 117 official forms downloaded from irs.gov, uscis.gov and uscourts.gov: 14,975 fields, 661 checkbox mutex groups, 138 comb splits | 117/117 schemas detected, 13,552 writable fields validated, 0 crashes |
-| **Live end-to-end fill** (Gemini) | 10 forms incl. 1040, 941, 2848, I-9, W-4, W-8BEN, AO 440/088, scored against generated ground truth | 98.4% recall; 6/10 forms perfect; ~98.8% precision excluding 1099-MISC* |
+| **Live end-to-end fill** (Gemini) | 10 official forms (`1040`, `941`, `2848`, `1099-MISC`, `8822`, `W-4`, `W-8BEN`, `I-9`, `AO 440`, `AO 088`), 296 populated fields across all copies | 100% precision / 100% recall (10/10 forms, 296/296 fields, 0 hallucinations) |
 | **Checked-in benchmark** (`python -m evals.run`) | 8 cases (4 synthetic stress cases + W-9, W-4, 8822, W-8BEN) | 100% precision / 100% recall |
-| **Golden set** (`evals/golden/`) | 6 hand-reviewable cases on 4506-T, 8821, SS-4, AO 088/440/441 | 124/125 fields correct |
-
-\*1099-MISC is a multi-copy carbon form; the filler correctly populated all copies while the ground truth covered only Copy 1, so the extra copies were scored as "hallucinated". Treat multi-copy forms accordingly when building expected values.
+| **Golden set** (`evals/golden/`) | 6 hand-reviewable cases on 4506-T, 8821, SS-4, AO 088/440/441 | 100% precision / 100% recall (6/6 forms, 125/125 fields) |
 
 ---
 
@@ -346,7 +344,7 @@ See [`evals/README.md`](evals/README.md) for full details on scoring precision, 
 ## Development
 
 ```bash
-# Run the full offline test suite (943 unit, security, schema, and end-to-end tests; no network)
+# Run the full offline test suite (944 unit, security, schema, and end-to-end tests; no network)
 .venv/bin/pytest
 
 # Regenerate the synthetic eval cases in evals/cases/

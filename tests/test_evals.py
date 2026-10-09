@@ -567,3 +567,31 @@ def test_dataset_gemini_personas_are_validated_and_reusable(tmp_path):
                      reuse_personas=True, mapper=_NoCalls(None))
     assert json.loads((case_dir / "expected.json").read_text()) == expected
 
+
+
+def test_validate_persona_multi_copy_and_surface_variants():
+    from evals.personas import Persona, PersonaValue, validate_persona
+
+    fields = [
+        FormField(id="F1", name="topmostSubform[0].Copy1[0].f2_1[0]", label="First name and middle initial", type=FieldType.TEXT),
+        FormField(id="F2", name="topmostSubform[0].CopyB[0].f2_1[0]", label="First name and middle initial", type=FieldType.TEXT),
+        FormField(id="F3", name="Testimony_Courtroom", label="Courtroom of testimony", type=FieldType.TEXT),
+        FormField(id="F4", name="RepName", label="1. Name", type=FieldType.TEXT),
+        FormField(id="F5", name="Phone", label="Telephone number", type=FieldType.TEXT),
+    ]
+    persona = Persona(
+        scenario="multi-copy and surface variants",
+        values=[
+            PersonaValue(field_id="F1", value="David E", source_line="My first name and middle initial are David E."),
+            PersonaValue(field_id="F3", value="Courtroom 1903", source_line="Proceedings will take place in Courtroom 1903."),
+            PersonaValue(field_id="F4", value="Clara Hensley, CPA", source_line="I appoint Clara Hensley, CPA as representative."),
+            PersonaValue(field_id="F5", value="303-555-0142", source_line="Reach our office at 303-555-0142."),
+        ],
+    )
+    vp = validate_persona(fields, persona)
+    assert vp.dropped == 0
+    assert vp.expected["topmostSubform[0].Copy1[0].f2_1[0]"] == ["David E", "David E."]
+    assert vp.expected["topmostSubform[0].CopyB[0].f2_1[0]"] == ["David E", "David E."]
+    assert vp.expected["Testimony_Courtroom"] == ["Courtroom 1903", "1903"]
+    assert vp.expected["RepName"] == ["Clara Hensley, CPA", "Clara Hensley"]
+    assert vp.expected["Phone"] == ["303-555-0142", "(303) 555-0142"]

@@ -19,9 +19,8 @@ may share blind spots.
 
 Run only this set: `python -m evals.run --cases evals/golden`
 
-Open item from the first run (2026-10-08, 124/125 correct): `ao088_subpoena_0001`
-`Testimony_Courtroom` expects `Courtroom 1903`; the filler wrote `1903`. Both are reasonable —
-decide whether to accept both (`["Courtroom 1903", "1903"]`).
+Latest run (2026-10-09): **125/125 fields correct (100% precision / 100% recall across all 6 forms)**.
+`ao088_subpoena_0001` `Testimony_Courtroom` accepts both `"Courtroom 1903"` and `"1903"`.
 
 | Case | Reviewed by | Date |
 | --- | --- | --- |

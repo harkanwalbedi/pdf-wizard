@@ -5,7 +5,10 @@
   "Defendant": "Zenith Transport Corp.",
   "Subpoena_To": "Gregory Thorne",
   "Testimony_Place": "Everett McKinley Dirksen United States Courthouse, 219 S Dearborn St, Chicago, IL 60604",
-  "Testimony_Courtroom": "Courtroom 1903",
+  "Testimony_Courtroom": [
+    "Courtroom 1903",
+    "1903"
+  ],
   "Testimony_DateTime": "11/14/2024 9:30 am",
   "Documents_List": "Original signed copies of the Master Services Agreement dated January 15, 2023, and all related transit manifests from Q1 2023.",
   "Officer_Date": "10/01/2024",

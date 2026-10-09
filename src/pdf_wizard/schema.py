@@ -147,12 +147,18 @@ def detect_schema(
 
     schema = build_schema(info)
     should_enrich = want_enrich or (enrich == "auto" and needs_visual_enrichment(schema))
+    model_key = str(getattr(mapper, "model", None) or settings.model)
+    if should_enrich and use_cache:
+        hit = schema_cache.get(info.sha256, require_enriched=True) or _disk_load(
+            settings.schema_cache_dir, info.sha256, model_key
+        )
+        if hit is not None:
+            schema_cache.put(hit)
+            return hit
     if not (should_enrich and _can_enrich(mapper)):
         if use_cache:
             schema_cache.put(schema)
         return schema
-
-    model_key = str(getattr(mapper, "model", None) or settings.model)
     with _enrich_lock(info.sha256):
         if use_cache:
             hit = schema_cache.get(info.sha256, require_enriched=True) or _disk_load(
