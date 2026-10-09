@@ -185,6 +185,11 @@ The terminal prints a one-time 256-bit sign-in token. Open `http://127.0.0.1:800
 - Use Chrome or Firefox (`Secure` cookies on `http://127.0.0.1` / `http://localhost` may not be accepted by Safari).
 - **Loopback note:** Browsers share cookies across ports on `127.0.0.1` / `localhost`. Do not run untrusted local web servers while signed in, and sign out when finished.
 
+| Upload page | Results page (W-9 filled from a scanned PDF) |
+|:---:|:---:|
+| ![PDF Wizard upload page](docs/images/ui_upload.png) | ![PDF Wizard results page](docs/images/ui_results.png) |
+| *Drop in the blank form plus data files, documents, earlier forms, or a note.* | *Per-field status, masked value, source, verbatim evidence, and confidence; download or delete the job.* |
+
 ### Reading the Fill Report
 
 | Status | Meaning |
