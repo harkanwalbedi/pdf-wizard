@@ -336,10 +336,15 @@ See [`evals/README.md`](evals/README.md) for full details on scoring precision, 
 
 ## Limitations
 
-- Fills AcroForm PDFs with fillable widgets. XFA-only forms and flat/scanned PDFs cannot be filled as target forms (they can still be used as input `--doc` sources).
-- Signature fields are never filled, and filling a signed PDF invalidates its signature.
-- Multi-select choice fields are filled with a single value.
-- Always review the filled PDF and report before submitting an official form.
+- **AcroForm widgets required:** Fills standard interactive PDF AcroForms. Flat scanned PDFs, pure images, and dynamic Adobe XFA-only forms cannot be filled directly as target forms (they can still be ingested as input `--doc` sources).
+- **Host-local schema cache:** Enriched schemas are cached locally on disk (`~/.cache/pdf-wizard/schemas/`). In stateless or containerized environments (such as Cloud Run or ephemeral worker pods), the cache resets between instances unless a persistent volume is mounted or pre-extracted schemas are supplied with `--schema`.
+- **In-memory server state:** `pdf-wizard serve` stores active job records and uploaded session files in local process memory and temporary directories; restarting the server clears job history from the web UI.
+- **No dynamic page or row generation:** If a form has a table with 5 predefined field rows (e.g. dependents or line items), it can only fill those 5 physical widget slots. It does not synthesize new pages or append extra rows to the PDF template.
+- **No PDF JavaScript execution:** Embedded Acrobat JavaScript macros (such as client-side auto-summing or recalculation scripts) are never executed for security reasons. Fields are populated strictly from source evidence.
+- **Signatures & seals:** Digital signature fields (`/Sig`) are intentionally left blank to prevent unauthorized signing. Filling an already digitally signed PDF will invalidate the cryptographic signature seal.
+- **Multi-select choice fields:** Choice and listbox widgets configured for multi-selection are populated with a single value.
+- **Resource caps:** Input files are capped at `10 MB` per file, `20 MB` total input sources, `100` pages per document, and `1,000` fields per form.
+- **Human review:** Always review the filled PDF and verification report before submitting an official filing.
 
 ## Development
 
