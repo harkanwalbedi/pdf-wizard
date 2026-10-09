@@ -5,6 +5,8 @@ PDF Wizard is a toolkit for **fillable (AcroForm) PDF forms**—such as tax form
 1. **Use Case 1 — Fill PDF Forms from Your Documents & Data (`pdf-wizard`):** Automatically populate blank AcroForm PDFs from structured records (`JSON`/`CSV`), unstructured documents (scanned PDFs, smartphone photos, `.eml` emails, plain text), previously filled reference forms, and notes—with deterministic guardrails and verbatim evidence citations for every filled field.
 2. **Use Case 2 — Generate Synthetic Form Data & Filled PDFs (`python -m evals.dataset`):** Synthesize 10s or 100s of realistic fake records, ground-truth filled PDFs, and matching unstructured source documents (`txt`, `scanned_pdf`, `jpeg`, `png`, `pdf`, `eml`) for built-in IRS/application forms (`Faker`, offline) or **any custom AcroForm PDF** (Gemini personas checked by the product guardrails; `--generator faker` works offline).
 
+Validated against **117 official US government forms** (IRS 1040/941/2848/1099, USCIS I-9, federal court AO forms, and more) — see [Tested on real forms](#tested-on-real-forms).
+
 ---
 
 ## Two Core Use Cases at a Glance
@@ -62,8 +64,8 @@ flowchart TD
 ```
 
 1. **Inspect & Detect Schema (Stage 1):** Reads the PDF's AcroForm widgets (type, options, max length, comb flags, format scripts), extracts tooltips and nearby printed labels, disambiguates split comb fields (SSN `3-2-4`, EIN `2-7`, phone `3-3-4`, ZIP+4 `5-4`), and groups mutually-exclusive checkboxes (`G1`, `G2`, ...).
-2. **Visual Overlay & Schema Enrichment:** Government forms often lack descriptive tooltips or use cryptic internal keys like `topmostSubform[0].Page1[0].f1_07[0]`. In automatic mode, PDF Wizard renders a temporary overlay PDF with **red bounding boxes and bold `[F#]` badges** over the blank form. Gemini Vision inspects this overlay to visually associate each field with printed form headings, instructions, and checkbox matrix groups—**with zero user data or PII exposed**.
-3. **Two-Tier Schema Cache:** Enriched schemas are cached in memory and on disk (`~/.cache/pdf-wizard/schemas/`, keyed by blank form `SHA-256`, prompt version, and model). Subsequent fills of the same form run instantly at $0 extra schema cost.
+2. **Visual Overlay & Schema Enrichment:** Government forms often lack descriptive tooltips or use cryptic internal keys like `topmostSubform[0].Page1[0].f1_07[0]`. In automatic mode, PDF Wizard renders a temporary overlay PDF with **red bounding boxes and bold `[F#]` badges** over the blank form. Gemini Vision inspects this overlay to visually associate each field with printed form headings, instructions, and checkbox matrix groups. This pass sees **only the blank form**—none of your documents or data—so the resulting schema contains no PII and is safe to cache and share.
+3. **Two-Tier Schema Cache:** Enriched schemas are cached in memory and on disk (`~/.cache/pdf-wizard/schemas/`). The key is the blank form's `SHA-256` plus the prompt version and model ID, so a re-uploaded form is recognised byte-for-byte and served instantly at $0 extra schema cost, while upgrading the model or prompt automatically triggers a fresh analysis instead of reusing stale labels.
 4. **Load Sources:** Normalizes structured JSON/CSV records, plain text, emails (`.eml`), scanned PDFs, JPEG/PNG images, previously filled reference PDFs, and user notes. Today's date is always provided as `S0`.
 5. **Map (Stage 2):** One structured-output Gemini call proposes values for fields answered by the sources, citing `source_id` and a verbatim quote (or JSON key path) as `evidence`.
 6. **Guardrails Engine:** Deterministically verifies every proposed value:
@@ -78,10 +80,21 @@ flowchart TD
 
 To see how this works in practice, compare the **Stage 1 Visual Overlay** (red coordinate boxes + `[F#]` badges generated for zero-PII Gemini Vision analysis) against the **Final Verified Filled Form** on **IRS Form 1040**:
 
-| Stage 1: Blank Visual Overlay with `[F#]` Badges | Stage 2: Final Ground-Truth Filled Form |
+| Stage 1: Blank Visual Overlay with `[F#]` Badges | Stage 2: Final Verified Filled Form |
 |:---:|:---:|
 | ![IRS Form 1040 Overlay](docs/images/f1040_overlay.png) | ![IRS Form 1040 Filled](docs/images/f1040_filled.png) |
 | *Gemini Vision reads printed text surrounding red coordinate badges on the blank form with zero user PII.* | *The engine populates verified values (Name, SSN combs, filing status checkboxes) with strict guardrails.* |
+
+### Tested on real forms
+
+| Test | Scope | Result |
+|---|---|---|
+| **Schema & guardrail battle test** (offline, no model calls) | 117 official forms downloaded from irs.gov, uscis.gov and uscourts.gov: 14,975 fields, 661 checkbox mutex groups, 138 comb splits | 117/117 schemas detected, 13,552 writable fields validated, 0 crashes |
+| **Live end-to-end fill** (Gemini) | 10 forms incl. 1040, 941, 2848, I-9, W-4, W-8BEN, AO 440/088, scored against generated ground truth | 98.4% recall; 6/10 forms perfect; ~98.8% precision excluding 1099-MISC* |
+| **Checked-in benchmark** (`python -m evals.run`) | 8 cases (4 synthetic stress cases + W-9, W-4, 8822, W-8BEN) | 100% precision / 100% recall |
+| **Golden set** (`evals/golden/`) | 6 hand-reviewable cases on 4506-T, 8821, SS-4, AO 088/440/441 | 124/125 fields correct |
+
+\*1099-MISC is a multi-copy carbon form; the filler correctly populated all copies while the ground truth covered only Copy 1, so the extra copies were scored as "hallucinated". Treat multi-copy forms accordingly when building expected values.
 
 ---
 
@@ -251,6 +264,9 @@ See [`evals/README.md`](evals/README.md) for full details on scoring precision, 
 # Run the 8 checked-in benchmark cases (4 synthetic stress cases + 4 official IRS forms)
 .venv/bin/python -m evals.run --model gemini-3.8-flash
 
+# Run the hand-reviewable golden set (real IRS and court forms)
+.venv/bin/python -m evals.run --cases evals/golden --model gemini-3.8-flash
+
 # Run against a custom synthetic dataset generated by evals.dataset
 .venv/bin/python -m evals.run --cases /tmp/synth_100/cases --model gemini-3.8-flash
 ```
@@ -279,6 +295,15 @@ See [`evals/README.md`](evals/README.md) for full details on scoring precision, 
 - **Where data goes:** your documents and form are sent only to Gemini in your configured Google Cloud project (or paid-tier Gemini API). Nothing else leaves your machine. Built-in-template data generation (`evals.dataset --template`), `pdf-wizard inspect`, and deterministic `pdf-wizard schema` make zero network calls. Schema enrichment sends only the blank form.
 - **Zero-PII logs & masked reports:** logs record only IDs, counts, timings, and error types with a redaction filter as a safety net. Reports and the web UI mask sensitive values.
 - **Untrusted files:** content-based file type verification, strict byte/page/field caps (`10 MB` per file, `20 MB` total, `100` pages, `1,000` fields), and no JavaScript execution. Document text and form labels are treated strictly as untrusted data.
+
+## Troubleshooting
+
+| Symptom | Likely cause / fix |
+|---|---|
+| `gemini call failed ... status=403` and the job fails with `MappingError` | `GOOGLE_CLOUD_PROJECT` points at a project without Vertex AI access (often a stale value from another shell). Run `echo $GOOGLE_CLOUD_PROJECT`, then `export GOOGLE_CLOUD_PROJECT=<project-with-vertex>` and restart `pdf-wizard serve`. |
+| `status=404` / model not found | The model ID in `PDF_WIZARD_MODEL` is not enabled in that project or region; try `GOOGLE_CLOUD_LOCATION=global`. |
+| Exit code `3` / "unsupported form" | The PDF is XFA-only or has no AcroForm widgets; check with `pdf-wizard inspect`. |
+| Many fields `no_data` on a cryptic form | Force Stage 1 enrichment once with `--enrich-schema` (cached afterwards), or inspect the labels with `pdf-wizard schema --enrich`. |
 
 ## Limitations
 
