@@ -108,6 +108,32 @@ python3 -m venv .venv
 .venv/bin/pip install --no-deps -e .
 ```
 
+### Connect to Vertex AI (one-time setup)
+
+PDF Wizard calls Gemini through **Vertex AI in your own Google Cloud project**, using your local Application Default Credentials (ADC). There is no API key or config file: the project comes from the `GOOGLE_CLOUD_PROJECT` environment variable, read once when a command starts.
+
+1. **Project:** use a Google Cloud project with the Vertex AI API enabled (`gcloud services enable aiplatform.googleapis.com --project <id>`). Your account needs the *Vertex AI User* role (`roles/aiplatform.user`) on it.
+2. **Credentials:** `gcloud auth application-default login`
+3. **Point PDF Wizard at the project** in the same shell you run it from:
+   ```bash
+   export GOOGLE_CLOUD_PROJECT=<your-project-id>
+   export GOOGLE_CLOUD_LOCATION=global        # optional; default is global
+   ```
+   Add these to `~/.bashrc` (or your shell profile) to make them permanent. A server that is already running keeps the project it started with, so restart `pdf-wizard serve` after changing it.
+
+| Command | Calls Gemini in your project? |
+|---|---|
+| `pdf-wizard inspect`, `pdf-wizard schema` (no `--enrich`) | No: fully offline |
+| `pdf-wizard schema --enrich` | Yes, blank form only |
+| `pdf-wizard fill`, `pdf-wizard serve` (each job) | Yes: your sources, plus the blank form unless an enriched schema is already cached or passed with `--schema` |
+| `evals.dataset --template ...` | No |
+| `evals.dataset --form ...` (default `--generator gemini`) | Yes, blank form + field catalog |
+| `evals.run` | Yes |
+
+If the project is missing, commands that need Gemini stop before uploading anything (exit code `4`; `serve` refuses to start) and tell you to set it. If it is set but wrong, Gemini returns `403`; see [Troubleshooting](#troubleshooting).
+
+**Alternative without Google Cloud:** `export PDF_WIZARD_BACKEND=gemini-api GEMINI_API_KEY=...` (paid tier only, because free-tier inputs may be used for training).
+
 ---
 
 ## Use Case 1: Filling PDF Forms from Your Documents & Data
