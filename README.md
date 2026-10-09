@@ -100,13 +100,28 @@ To see how this works in practice, compare the **Stage 1 Visual Overlay** (red c
 
 ## Installation
 
-Requires **Python 3.12+**. For AI-powered form filling (`pdf-wizard fill`), also configure a Google Cloud project with Vertex AI enabled (or a paid-tier `GEMINI_API_KEY`).
+Requires **Python 3.12+**. For AI-powered form filling (`pdf-wizard fill`), also configure a Google Cloud project with Vertex AI enabled (or a paid-tier `GEMINI_API_KEY`), as described [below](#connect-to-vertex-ai-one-time-setup).
+
+**With [uv](https://docs.astral.sh/uv/) (faster):**
+
+```bash
+uv venv -p 3.12 .venv
+uv pip sync requirements-dev.lock      # exact pinned versions, removes anything extra
+uv pip install --no-deps -e .
+```
+
+**With pip:**
 
 ```bash
 python3 -m venv .venv
 .venv/bin/pip install -r requirements-dev.lock
 .venv/bin/pip install --no-deps -e .
 ```
+
+Both use the same lockfile and produce the same `.venv`, so every `.venv/bin/...` command below works either way.
+
+> [!NOTE]
+> If `uv pip sync` reports `there is no version of <pkg>==<x>`, your package mirror is probably holding back recently published versions (some corporate mirrors add a delay before new releases appear). Use the pip commands, or point uv at another index with `--default-index`.
 
 ### Connect to Vertex AI (one-time setup)
 
