@@ -331,7 +331,7 @@ See [`evals/README.md`](evals/README.md) for full details on scoring precision, 
 ```
 
 Extension points:
-- **New built-in synthetic template:** in `evals/dataset.py`, add the blank form to `TEMPLATES`, write a `_generate_<name>` function (see `_generate_irs_w9`), and add it to the dispatch in `_generate_sample`. For one-off forms, `--form your.pdf` needs no code.
+- **New built-in synthetic template:** in `evals/dataset.py`, add the blank form to `TEMPLATES`, write a `_generate_<name>` function (see `_generate_irs_w9`), and add it to the dispatch in `_build_sample`. For one-off forms, `--form your.pdf` needs no code.
 - **Different model backend:** implement the `Mapper` protocol in `src/pdf_wizard/mapping/base.py` (`propose()`, optionally `enrich_schema()` and `generate()`) and pass it as `mapper_factory`; `mapping/fake.py` is the offline reference implementation used by the tests.
 - **New source type:** add a normalizer under `src/pdf_wizard/sources/` that returns the shared `Source` model; guardrails and evidence checks work unchanged.
 
