@@ -64,7 +64,7 @@ flowchart TD
 ```
 
 1. **Inspect & Detect Schema (Stage 1):** Reads the PDF's AcroForm widgets (type, options, max length, comb flags, format scripts), extracts tooltips and nearby printed labels, disambiguates split comb fields (SSN `3-2-4`, EIN `2-7`, phone `3-3-4`, ZIP+4 `5-4`), and groups mutually-exclusive checkboxes (`G1`, `G2`, ...).
-2. **Visual Overlay & Schema Enrichment:** Government forms often lack descriptive tooltips or use cryptic internal keys like `topmostSubform[0].Page1[0].f1_07[0]`. In automatic mode, PDF Wizard renders a temporary overlay PDF with **red bounding boxes and bold `[F#]` badges** over the blank form. Gemini Vision inspects this overlay to visually associate each field with printed form headings, instructions, and checkbox matrix groups. This pass sees **only the blank form**—none of your documents or data—so the resulting schema contains no PII and is safe to cache and share.
+2. **Visual Overlay & Schema Enrichment:** Government forms often lack descriptive tooltips or use cryptic internal keys like `topmostSubform[0].Page1[0].f1_07[0]`. In automatic mode, PDF Wizard renders a temporary overlay PDF with **red bounding boxes and bold `[F#]` badges** over the blank form. Gemini Vision inspects this overlay to visually associate each field with printed form headings, instructions, and checkbox matrix groups. This pass sees **only the blank form**—none of your documents or data—so the resulting schema contains no user data and is safe to cache and share.
 3. **Two-Tier Schema Cache:** Enriched schemas are cached in memory and on disk (`~/.cache/pdf-wizard/schemas/`). The key is the blank form's `SHA-256` plus the prompt version and model ID, so a re-uploaded form is recognised byte-for-byte and served instantly at $0 extra schema cost, while upgrading the model or prompt automatically triggers a fresh analysis instead of reusing stale labels.
 4. **Load Sources:** Normalizes structured JSON/CSV records, plain text, emails (`.eml`), scanned PDFs, JPEG/PNG images, previously filled reference PDFs, and user notes. Today's date is always provided as `S0`.
 5. **Map (Stage 2):** One structured-output Gemini call proposes values for fields answered by the sources, citing `source_id` and a verbatim quote (or JSON key path) as `evidence`.
@@ -78,12 +78,12 @@ flowchart TD
 
 ### Visual Walkthrough: Blank Overlay vs. Final Filled Form
 
-To see how this works in practice, compare the **Stage 1 Visual Overlay** (red coordinate boxes + `[F#]` badges generated for zero-PII Gemini Vision analysis) against the **Final Verified Filled Form** on **IRS Form 1040**:
+To see how this works in practice, compare the **Stage 1 Visual Overlay** (red coordinate boxes + `[F#]` badges generated for blank-form Gemini Vision analysis) against the **Final Verified Filled Form** on **IRS Form 1040**:
 
 | Stage 1: Blank Visual Overlay with `[F#]` Badges | Stage 2: Final Verified Filled Form |
 |:---:|:---:|
 | ![IRS Form 1040 Overlay](docs/images/f1040_overlay.png) | ![IRS Form 1040 Filled](docs/images/f1040_filled.png) |
-| *Gemini Vision reads printed text surrounding red coordinate badges on the blank form with zero user PII.* | *The engine populates verified values (Name, SSN combs, filing status checkboxes) with strict guardrails.* |
+| *Gemini Vision reads printed text surrounding red coordinate badges on the blank form without user data.* | *The engine populates verified values (Name, SSN combs, filing status checkboxes) with strict guardrails.* |
 
 ### Tested on real forms
 
@@ -322,7 +322,7 @@ See [`evals/README.md`](evals/README.md) for full details on scoring precision, 
 ## Privacy and security
 
 - **Where data goes:** your documents and form are sent only to Gemini in your configured Google Cloud project (or paid-tier Gemini API). Nothing else leaves your machine. Built-in-template data generation (`evals.dataset --template`), `pdf-wizard inspect`, and deterministic `pdf-wizard schema` make zero network calls. Schema enrichment sends only the blank form.
-- **Zero-PII logs & masked reports:** logs record only IDs, counts, timings, and error types with a redaction filter as a safety net. Reports and the web UI mask sensitive values.
+- **Redacted logs & masked reports:** logs record only IDs, counts, timings, and error types with a redaction filter as a safety net. Reports and the web UI mask sensitive values.
 - **Untrusted files:** content-based file type verification, strict byte/page/field caps (`10 MB` per file, `20 MB` total, `100` pages, `1,000` fields), and no JavaScript execution. Document text and form labels are treated strictly as untrusted data.
 
 ## Troubleshooting
@@ -376,7 +376,7 @@ src/pdf_wizard/
     config.py       Environment configuration and resource limits
     errors.py       User-safe exception hierarchy and exit codes
     report.py       Report construction and masking
-    logsafe.py      PII-redacting log filter
+    logsafe.py      Redacting log filter
     pdf/            AcroForm inspection (`inspector.py`), filling & flattening (`filler.py`)
     sources/        Normalizers for JSON/CSV, text, `.eml`, PDFs, images, reference forms, notes
     mapping/        Prompt construction (`prompt.py`), `GeminiMapper` (`gemini.py`), `FakeMapper` (`fake.py`)
